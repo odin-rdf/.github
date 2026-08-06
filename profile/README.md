@@ -1,13 +1,5 @@
 # odin-rdf
 
-<!-- Floated right, so listed in reverse: right floats stack from the right edge
-     leftward, making source order the mirror of display order. -->
-<img src="https://cygri.github.io/rdf-logos/svg/shacl.svg" alt="SHACL" align="right" width="48" height="48" hspace="3">
-<img src="https://cygri.github.io/rdf-logos/svg/sparql.svg" alt="SPARQL" align="right" width="48" height="48" hspace="3">
-<img src="https://cygri.github.io/rdf-logos/svg/turtle.svg" alt="Turtle" align="right" width="48" height="48" hspace="3">
-<img src="https://cygri.github.io/rdf-logos/svg/n-triple.svg" alt="N-Triples" align="right" width="48" height="48" hspace="3">
-<img src="https://cygri.github.io/rdf-logos/svg/rdf.svg" alt="RDF" align="right" width="48" height="48" hspace="3">
-
 An RDF toolchain for the [Odin](https://odin-lang.org) programming language,
 with no external dependencies.
 
