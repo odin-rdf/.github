@@ -1,0 +1,9 @@
+# The odin-rdf-* projects are separate GitHub repositories, checked out here as
+# siblings purely for local development: the family's Makefiles and ols.json
+# reach each other through relative collections (-collection:rdf=../odin-rdf-parser,
+# -collection:store=../odin-rdf-store), so they must live side by side on disk.
+# They are not part of this repository.
+odin-rdf-*/
+
+# macOS
+.DS_Store
