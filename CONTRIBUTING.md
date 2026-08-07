@@ -26,6 +26,22 @@ Clone the ones you need into that layout. A collection resolves in the
 the store also needs the parser present — the store's own sources import
 `rdf:`.
 
+The same mechanism carries projects *outside* the family, with one extra hop:
+a consumer keeps its own checkout beside `odin-rdf/` rather than inside it,
+and points its collections into that directory instead of at its own
+siblings. A consumer — `odin-rdf-app` here — is laid out like this:
+
+```
+workspace/
+├── odin-rdf/       ← the four repositories, as above
+└── odin-rdf-app/   ← -collection:rdf=../odin-rdf/odin-rdf-parser, and so on
+```
+
+Nothing in the family requires that shape — the collection flags take any
+path, and a consumer that keeps the checkout root elsewhere need only say so
+once, in its own build. Keeping it adjacent is what lets the relative paths
+committed to a Makefile work on a fresh clone.
+
 ## Building and testing
 
 Every repository except the parser is `make`-driven:
