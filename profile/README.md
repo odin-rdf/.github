@@ -20,7 +20,7 @@ odin-rdf-store    storage and the match interface
 | **[odin-rdf-parser](https://github.com/odin-rdf/odin-rdf-parser)** | Streaming parsers and emitters for N-Triples, N-Quads, Turtle, and TriG, plus the shared term/triple/quad model | All 1045 W3C conformance tests pass, RDF 1.2 / RDF-star included |
 | **[odin-rdf-store](https://github.com/odin-rdf/odin-rdf-store)** | Quad store and the `match()` interface engines query through — in-memory and LMDB-backed backends | Both backends pass one shared conformance suite |
 | **[odin-rdf-sparql](https://github.com/odin-rdf/odin-rdf-sparql)** | SPARQL 1.1 Query with the 1.2 surface: text → algebra → solutions, over any store backend | 352 syntax and 483 evaluation tests, run against both backends |
-| **[odin-rdf-shacl](https://github.com/odin-rdf/odin-rdf-shacl)** | SHACL Core validation of data graphs against shapes graphs | Not yet implemented |
+| **[odin-rdf-shacl](https://github.com/odin-rdf/odin-rdf-shacl)** | SHACL Core validation of data graphs against shapes graphs | All 98 entries of the W3C `core/` suite pass, run against both backends — SHACL-SPARQL is a later phase |
 
 ## What these are
 
