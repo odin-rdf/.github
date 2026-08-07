@@ -74,20 +74,38 @@ Remaining backlog: GRAPH scoping for OPTIONAL/MINUS, and a family-wide term-iden
 Out of scope: result serialization (SPARQL JSON/XML writers), SPARQL Update, the HTTP and
 Graph Store protocols, federation (SERVICE), full-text search.
 
-### odin-rdf-shacl — `SHACL-*` — **not yet implemented**
+### odin-rdf-shacl — `SHACL-*` — SHACL Core complete (v0.1.0)
 
-Only scaffolding exists: `LICENSE`, `Makefile`, `ols.json`, and `.metis/vision.md`. No
-initiatives, tasks, ADRs, or source. A peer of odin-rdf-sparql on the same foundation —
-shapes graphs are ordinary RDF loaded via the parser, and validation reads the data graph
-through the store's match interface.
+Shape-based validation, a peer of odin-rdf-sparql on the same foundation: shapes graphs are
+ordinary RDF loaded via the parser, and the data graph is read through the store's match
+interface alone, so the same shapes validate in-memory and LMDB-backed data identically.
+Packages: `shacl` (backend-independent core — compilation, target resolution, property
+paths, the constraint catalogue, `sh:ValidationReport` building), `shacl/memstore` and
+`shacl/kvstore` (per-backend instantiations, peers rather than layers).
 
-Planned: shapes-graph loading and compilation into a shapes model, SHACL Core (target
-resolution, the full Core constraint catalogue, property paths, logical combinators,
-shape-based constraints), `sh:ValidationReport` result graphs plus a programmatic result
-API, and the official W3C SHACL suite run hermetically. **SHACL Core must have zero
-dependency on odin-rdf-sparql**; SHACL-SPARQL (`sh:sparql` constraints and SPARQL-based
-constraint components) is a strictly optional later phase — the Makefile notes exactly
-where the `sparql:` collection gets added when that phase starts.
+Status: all twenty-nine non-SPARQL constraint components of §4 implemented, and all 98
+entries of the W3C SHACL 1.0 suite's `core/` tree passing against both backends at both
+`Term_ID` widths — no skip list, no expected-failure file. Key ADRs: `SHACL-A-0001` (the
+shapes model — it owns every term it holds, so it outlives the store it compiled from and
+binds to any other) and `SHACL-A-0002` (suppressed validation: conformance without results).
+`make check` also runs a `purity` target that greps a built binary for `mdb_` symbols: one
+stray `store:store/kvstore` import inside `shacl` would put LMDB into every consumer's link.
+
+Three contracts to know before extending it:
+
+- **An unimplemented constraint is ignored, not an error** — erroring would reject the
+  spec's own non-validating annotations and every vendor extension. `shapes_ignored` returns
+  what the compile skipped, and must be checked before trusting `sh:conforms true`.
+- **`sh:datatype` checks the lexical form only for the datatypes it models** (xsd:string,
+  boolean, the integer tower, decimal/float/double, dateTime, date, rdf:langString). Others
+  skip the lexical check rather than fail it — an engine may call a lexical form invalid
+  only when it knows the space.
+- **`sh:pattern` is Odin's `core:text/regex`, not XPath's dialect.** Flags `i m x` carry
+  over; `s` and `q` are compile-time errors rather than silent downgrades.
+
+Remaining: SHACL-SPARQL (`sh:sparql` and SPARQL-based constraint components), the only thing
+that would add odin-rdf-sparql as a dependency — the Makefile notes where the `sparql:`
+collection gets added. **SHACL Core does not depend on it and will not.**
 
 Out of scope: SHACL Advanced Features (rules, functions), inference/entailment, servers.
 
