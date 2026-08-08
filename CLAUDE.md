@@ -54,21 +54,33 @@ executable form of the contract and runs against kvstore at both `Term_ID` width
 No consumer outside the test suites had ever asked for one, and the transaction model
 the layers above need came out dominated by accommodating a backend with no versioning.
 Two consequences run family-wide: **every consumer links LMDB**, and **every dataset is
-a filesystem path** — LMDB has no anonymous or in-memory mode, so there is no ephemeral
-store anywhere in the stack. The core/instantiation split in every repo survives, and
-the `conformance.Backend` adapter is retained, so a second backend is an addition rather
-than an excavation.
+a filesystem path** — LMDB has no anonymous or in-memory mode. The second is softened but
+not repealed by `open_ephemeral` (v0.3.0): a scratch dataset is still a file, but no
+caller has to name it, make it unique, or clean it up, and it dies with the process. The
+suites in every repo use it; it is not for data anyone keeps. The core/instantiation split
+in every repo survives, and the `conformance.Backend` adapter is retained, so a second
+backend is an addition rather than an excavation.
 
 Key ADRs: `STORE-A-0001` (kind-tagged dense `Term_ID`s with build-time width — quads are
 `[4]Term_ID`, so joins and dedup are integer comparisons and a term's kind is readable
 without a dictionary lookup), `STORE-A-0002` (match interface as a procedure-set convention —
 compile-time backend binding, no dynamic dispatch on the hot path), `STORE-A-0003`
 (LMDB persistent format), `STORE-A-0006` (the single-backend stance, and what it retracts
-from the vision).
+from the vision), `STORE-A-0007` (transactions and snapshots: one `Txn` handle, two modes,
+and **a read transaction *is* the snapshot** — no separate snapshot type anywhere).
+
+**Transactions are the current release line.** v0.3.0 shipped them and both siblings have
+adopted them: shacl validates through a caller's write transaction (validate-before-commit),
+sparql holds a read transaction for a `Query`'s lifetime (one query, one dataset). Every
+operation has a `_txn` form; the bare procedures are unchanged and *defined* as autocommit.
+v0.4.0 followed from a Windows failure `open_ephemeral` surfaced downstream (`STORE-T-0042`)
+and is the current pin in both consumers.
 
 The interface is deliberately minimal and grows only on downstream evidence. The backlog
-(`.metis/backlog/features/`) holds the anticipated planner-support surface: snapshot reads,
-ordered iteration, cardinality estimates, `find_term`, named-graph introspection.
+(`.metis/backlog/features/`) holds what is left of the anticipated planner-support surface:
+ordered iteration, cardinality estimates, named-graph introspection, a named-graph wildcard,
+`triple_parts`, `remove`, `insert_all`, sentinel reservation. Snapshot reads and `find_term`
+came off that list by being built.
 
 ### odin-rdf-sparql — `SPARQL-*` — parser and evaluation engine complete
 
@@ -82,9 +94,12 @@ names no backend and imports none; since memstore's retirement that split is the
 future backend binds to rather than a linkage guarantee.
 
 Status: 352 vendored syntax tests (154 SPARQL 1.1, 198 SPARQL 1.2) and 483 evaluation tests
-across 35 suite directories, each run against kvstore at **both** `Term_ID` widths.
-Remaining backlog: GRAPH scoping for OPTIONAL/MINUS, and a family-wide term-identity question
-(language-tag case, IRI normalization).
+across 35 suite directories, each run against kvstore at **both** `Term_ID` widths. **A query
+is one snapshot** since `SPARQL-T-0024`: `query_init` takes a read transaction and
+`query_destroy` ends it, so evaluation answers about one dataset rather than about however
+many its independent reads landed on; `query_init_txn` runs a query inside a transaction the
+caller holds. Remaining backlog: GRAPH scoping for OPTIONAL/MINUS, and a family-wide
+term-identity question (language-tag case, IRI normalization).
 
 Out of scope: SPARQL Update, the HTTP and Graph Store protocols, federation (SERVICE),
 full-text search. (Result serialization *was* out of scope and no longer is — `sparql/srj`
@@ -109,7 +124,14 @@ used to protect a consumer that wanted no LMDB in its link; with memstore gone t
 such consumer, so it now catches a stray `store:store/kvstore` import in the core — internal
 hygiene guarding the seam a future backend would use.
 
-Three contracts to know before extending it:
+**Validate-before-commit is reachable** since `SHACL-T-0029`: `session_init_txn` binds a
+`Session` to a caller's `^kvstore.Txn`, so a candidate built inside a write transaction is
+validated against *the dataset that write would produce*. The alternative an isolated
+store steers you toward is wrong rather than slow — every constraint that must consult
+existing data reads an empty world and passes vacuously. `session_init` still means
+autocommit and is still the default.
+
+Four contracts to know before extending it:
 
 - **An unimplemented constraint is ignored, not an error** — erroring would reject the
   spec's own non-validating annotations and every vendor extension. `shapes_ignored` returns
@@ -120,6 +142,11 @@ Three contracts to know before extending it:
   only when it knows the space.
 - **`sh:pattern` is Odin's `core:text/regex`, not XPath's dialect.** Flags `i m x` carry
   over; `s` and `q` are compile-time errors rather than silent downgrades.
+- **`sh:class` needs the class hierarchy in the *data* graph**, not the shapes graph.
+  Validation reads one caller-named graph and cannot express a union, so a shape saying
+  `sh:class ex:Asset` will not see that `ex:ResourceAsset rdfs:subClassOf ex:Asset` unless
+  that triple is in the graph being validated. It is the most common way a shapes graph
+  silently under-reports, and `sh:targetClass` walks the same closure.
 
 Remaining: SHACL-SPARQL (`sh:sparql` and SPARQL-based constraint components), the only thing
 that would add odin-rdf-sparql as a dependency — the Makefile notes where the `sparql:`
@@ -141,6 +168,13 @@ Out of scope: SHACL Advanced Features (rules, functions), inference/entailment, 
 - **Zero-copy discipline.** Honor the borrowing/lifetime model of `RDF-A-0001`; interned
   terms and mapped pages over defensive copies.
 - **Contract-level doc comments** on every public API — the standard set by odin-rdf-parser.
+- **A release is not done until its consumers' Current State is re-read.** Version numbers
+  and "remaining backlog" lists go stale silently, in `.metis/vision.md` and in this file,
+  and they are what the next session trusts. When a repo here tags a release, walk the
+  consumers: bump the CI pin, and re-read their vision's Current State for claims the
+  release just falsified. Amend rather than rewrite — the convention everywhere here is
+  that the old paragraph stands as the record of what was true, with a dated note saying
+  what moved.
 - **Sibling checkouts, reached via collections** — never vendored copies:
   `-collection:rdf=../odin-rdf-parser`, `-collection:store=../odin-rdf-store`. Declared in
   each `Makefile` and mirrored in `ols.json`. Note that a collection resolves in the
