@@ -67,19 +67,53 @@ without a dictionary lookup), `STORE-A-0002` (match interface as a procedure-set
 compile-time backend binding, no dynamic dispatch on the hot path), `STORE-A-0003`
 (LMDB persistent format), `STORE-A-0006` (the single-backend stance, and what it retracts
 from the vision), `STORE-A-0007` (transactions and snapshots: one `Txn` handle, two modes,
-and **a read transaction *is* the snapshot** — no separate snapshot type anywhere).
+and **a read transaction *is* the snapshot** — no separate snapshot type anywhere),
+`STORE-A-0008` (transaction time: format v2, the negated epoch suffix, and as-of on the
+transaction).
 
-**Transactions are the current release line.** v0.3.0 shipped them and both siblings have
-adopted them: shacl validates through a caller's write transaction (validate-before-commit),
-sparql holds a read transaction for a `Query`'s lifetime (one query, one dataset). Every
-operation has a `_txn` form; the bare procedures are unchanged and *defined* as autocommit.
-v0.4.0 followed from a Windows failure `open_ephemeral` surfaced downstream (`STORE-T-0042`)
-and is the current pin in both consumers.
+**Transactions were the v0.3.0 release line** and both siblings adopted them: shacl
+validates through a caller's write transaction (validate-before-commit), sparql holds a read
+transaction for a `Query`'s lifetime (one query, one dataset). Every operation has a `_txn`
+form; the bare procedures are unchanged and *defined* as autocommit. v0.4.0 followed from a
+Windows failure `open_ephemeral` surfaced downstream (`STORE-T-0042`).
+
+**Transaction time is the current release line, and it is unreleased on `main` as of
+2026-08-08** (`STORE-I-0005`, `STORE-A-0008`). It is the largest change since the LMDB
+backend itself and it changes what the store *is*:
+
+- **A quad has a lifetime.** Every index key carries the epoch of the transaction that wrote
+  it, **bitwise-complemented so a quad's versions sort newest-first**, and every entry
+  carries an assert/retract flag. A current-state read finds the live version in one seek
+  whatever the edit depth — that negation is the whole design, and without it the store
+  would get slower the longer it ran.
+- **`remove` exists, and it retracts rather than erases.** `remove(ds, pattern)` takes a
+  `Match_Pattern`, not a quad, and appends a retraction. `STORE-A-0002` point 5 specified it
+  as *logical visibility* four ADRs before anything implemented it, and it is satisfied **as
+  written rather than revised**. Nothing is ever physically deleted; the dictionary never
+  reclaims a `Term_ID`.
+- **Every commit is dated and attributed.** `txn_begin` grew a defaulted annotation, so every
+  existing call site in all three repos compiles unchanged. A write naming nobody is recorded
+  as the reserved IRI `…/ns/store#unattributed` — an ordinary term, so "who" is total.
+  Two times are stored per commit, and where a clock ran backwards **they disagree and an
+  auditor can see that they disagree**.
+- **The past is readable, and it costs the siblings nothing.** `txn_begin_as_of(s, epoch)`
+  returns a read transaction carrying a horizon, and *every* read through it is as-of — so
+  `sparql.query_init_txn` and `shacl_kvstore.session_init_txn`, both of which already take a
+  `^Txn`, inherit it with no source change. Verified, not assumed. `epoch_at` turns a
+  wall-clock time into a horizon; `match_history` + `epoch_info` answer "who changed X",
+  which is deliberately **not** a SPARQL question, since `match` hides version boundaries.
+
+**Format version 2 does not read version 1 and there is no migration** — an unknown format
+aborts the open, the rule the format already had. Two costs, measured: a single autocommit
+`insert` of a new quad is **−28%** (set membership is a seek where a failing `NOOVERWRITE`
+put used to do it; on the bulk-load path it is −4 to −9%), and the database is **+15%** on
+disk. **v0.4.0 remains the pin in both consumers** until v0.5.0 is tagged, which is held
+until `STORE-T-0052` lands as-of tests in both siblings.
 
 The interface is deliberately minimal and grows only on downstream evidence. The backlog
 (`.metis/backlog/features/`) holds what is left of the anticipated planner-support surface:
 ordered iteration, cardinality estimates, named-graph introspection, a named-graph wildcard,
-`triple_parts`, `remove`, `insert_all`, sentinel reservation. Snapshot reads and `find_term`
+`triple_parts`, `insert_all`, sentinel reservation. Snapshot reads, `find_term` and `remove`
 came off that list by being built.
 
 ### odin-rdf-sparql — `SPARQL-*` — parser and evaluation engine complete
