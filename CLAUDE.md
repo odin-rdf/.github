@@ -114,10 +114,11 @@ tagged and is the pin in both consumers**, and in odin-rdf-shacl a documented fl
 
 The interface is deliberately minimal and grows only on downstream evidence. The backlog
 (`.metis/backlog/features/`) holds what is left of the anticipated planner-support surface:
-**ordered iteration (`STORE-T-0015`), cardinality estimates (`STORE-T-0018`), and
-named-graph introspection (`STORE-T-0016`)** — plus `STORE-T-0053`, a costing rather than a
-capability. Snapshot reads, `find_term`, `remove`, `triple_parts`, `insert_all`, sentinel
-reservation and the named-graph wildcard came off that list by being built.
+**ordered iteration (`STORE-T-0015`) and cardinality estimates (`STORE-T-0018`)** — the
+planner surface, and neither has a consuming task in odin-rdf-sparql — plus `STORE-T-0053`,
+a costing rather than a capability. Snapshot reads, `find_term`, `remove`, `triple_parts`,
+`insert_all`, sentinel reservation, the named-graph wildcard and dataset introspection came
+off that list by being built.
 
 **The named-graph wildcard is `store.NAMED_GRAPHS`, unreleased on `main` as of 2026-08-09**
 (`STORE-T-0017`): a fourth sentinel, valid in the graph position of a `Match_Pattern` and
@@ -127,8 +128,25 @@ default-graph results was always correct, and always read the default graph to d
 answers by ending the scan instead of filtering it, which the ID encoding gives for free:
 `DEFAULT_GRAPH` carries the highest kind tag, so in a graph-first index the named graphs are a
 prefix and the default graph is the tail. **Nothing observable changes until odin-rdf-sparql
-builds the pattern** — `unify_quad` in `sparql/exec.odin` still post-filters, and no task
-there consumes this yet.
+builds the pattern** — `unify_quad` in `sparql/exec.odin` still post-filters, and the
+consuming task is `SPARQL-T-0026`, blocked on the release.
+
+**`graphs(ds)` and `nodes(ds, graph)` are unreleased on `main` too** (`STORE-T-0016`,
+2026-08-09), and they widen what the match interface is *about*: every procedure before them
+took a pattern and streamed quads, and these take a dataset and stream terms — the named
+graphs, and the distinct subjects and objects of one graph. **A backend may not maintain
+either**, which is contract rather than implementation: a stored graph list charges every
+writer for a question only some readers ask, and with a time dimension it would have to be
+versioned too, "the graphs as of last Tuesday" being already askable. Both walks go through
+`match`, so a graph whose quads were all retracted is not a graph, and an as-of transaction
+answers about the graphs of that moment with no new procedure. `nodes` is a two-way merge of
+two skip-scans holding no set, since subjects ascend in gspo and objects in gosp. Consumers
+again unchanged: `Plan_Graph_Scan` and `path_collect_nodes` still scan, and here there is no
+task at all.
+
+**Three unreleased capabilities on `main` and no tag** as of 2026-08-09 — the wildcard, the
+two introspection procedures — with both consumers pinned to `v0.5.0`. Nothing schedules the
+v0.6.0 that would let either sibling consume any of them.
 
 ### odin-rdf-sparql — `SPARQL-*` — parser and evaluation engine complete
 
