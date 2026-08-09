@@ -107,14 +107,28 @@ backend itself and it changes what the store *is*:
 aborts the open, the rule the format already had. Two costs, measured: a single autocommit
 `insert` of a new quad is **−28%** (set membership is a seek where a failing `NOOVERWRITE`
 put used to do it; on the bulk-load path it is −4 to −9%), and the database is **+15%** on
-disk. **v0.4.0 remains the pin in both consumers** until v0.5.0 is tagged, which is held
-until `STORE-T-0052` lands as-of tests in both siblings.
+disk. ~~**v0.4.0 remains the pin in both consumers** until v0.5.0 is tagged, which is held
+until `STORE-T-0052` lands as-of tests in both siblings.~~ **Superseded 2026-08-09: v0.5.0 is
+tagged and is the pin in both consumers**, and in odin-rdf-shacl a documented floor
+(`SHACL-T-0030`) rather than a pin.
 
 The interface is deliberately minimal and grows only on downstream evidence. The backlog
 (`.metis/backlog/features/`) holds what is left of the anticipated planner-support surface:
-ordered iteration, cardinality estimates, named-graph introspection, a named-graph wildcard,
-`triple_parts`, `insert_all`, sentinel reservation. Snapshot reads, `find_term` and `remove`
-came off that list by being built.
+**ordered iteration (`STORE-T-0015`), cardinality estimates (`STORE-T-0018`), and
+named-graph introspection (`STORE-T-0016`)** — plus `STORE-T-0053`, a costing rather than a
+capability. Snapshot reads, `find_term`, `remove`, `triple_parts`, `insert_all`, sentinel
+reservation and the named-graph wildcard came off that list by being built.
+
+**The named-graph wildcard is `store.NAMED_GRAPHS`, unreleased on `main` as of 2026-08-09**
+(`STORE-T-0017`): a fourth sentinel, valid in the graph position of a `Match_Pattern` and
+nowhere else, meaning "every graph that has a name". It is the first sentinel added for a
+*cost* rather than for an expressiveness gap — matching `WILDCARD` and dropping the
+default-graph results was always correct, and always read the default graph to do it. kvstore
+answers by ending the scan instead of filtering it, which the ID encoding gives for free:
+`DEFAULT_GRAPH` carries the highest kind tag, so in a graph-first index the named graphs are a
+prefix and the default graph is the tail. **Nothing observable changes until odin-rdf-sparql
+builds the pattern** — `unify_quad` in `sparql/exec.odin` still post-filters, and no task
+there consumes this yet.
 
 ### odin-rdf-sparql — `SPARQL-*` — parser and evaluation engine complete
 
