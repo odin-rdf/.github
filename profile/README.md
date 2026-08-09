@@ -13,6 +13,7 @@ odin-rdf-parser   formats, data model, and parser
 odin-rdf-store    storage and the match interface
       |
       +-- odin-rdf-sparql   query engine
+      |
       +-- odin-rdf-shacl    shape validation
 ```
 
