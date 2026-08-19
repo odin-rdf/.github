@@ -1,11 +1,13 @@
 # odin-rdf — an RDF stack for the Odin programming language
 
-This directory is not itself a repository. It is the shared checkout root for four
-independent GitHub repositories that together form a layered RDF toolchain for Odin,
+This directory is not itself a repository. It is the shared checkout root for five
+independent repositories that together form a layered RDF toolchain for Odin —
+four on GitHub, plus odin-rdf-record (founded 2026-08-19), local until published —
 written from scratch in Odin with no external dependencies (LMDB being the single
 exception — and since 2026-08-07 no longer an isolated one: it is the only storage
-backend, so everything from odin-rdf-store up links it). Each repo is independently
-usable and depends only *downward*.
+backend, so everything from odin-rdf-store up links it; **amended 2026-08-19**:
+odin-rdf-record stands apart with no LMDB and no external dependency at all). Each
+repo is independently usable and depends only *downward*.
 
 ```
 odin-rdf-parser   formats + data model      ← the foundation
@@ -14,6 +16,11 @@ odin-rdf-store    storage + match interface
       ↓
 odin-rdf-sparql   query engine              odin-rdf-shacl   validation engine
                                             (peer of sparql; optionally consumes it)
+
+odin-rdf-record   system of record — a second store beside odin-rdf-store, not a
+                  replacement: hash-chained log + memory-resident projection.
+                  Consumes the parser only; sparql and shacl target it in the
+                  future and the store today.
 ```
 
 Each repo is developed with the **Metis** tools and Metis MCP: `.metis/vision.md` is
@@ -148,6 +155,76 @@ task at all.
 two introspection procedures — with both consumers pinned to `v0.5.0`. Nothing schedules the
 v0.6.0 that would let either sibling consume any of them.
 
+### odin-rdf-record — `RECORD-*` — the log of record complete (format v1)
+
+A tamper-evident **system of record**: an append-only, hash-chained, segmented log
+is the only durable representation, replayed on every start into a memory-resident
+store — pointer-free fact table, dictionary arena, six sorted `[]FactID`
+permutations — serving epoch-pinned snapshots, aggregation, and per-entity history.
+Independent verifiability is the value proposition: the chain is checkable by a
+third party from the format specification alone. A second store *beside*
+odin-rdf-store, not a replacement, a fork, or a backend of it — the two share no
+durable format, no transaction model, and no ID scheme, and odin-rdf-store is
+untouched. Consumes odin-rdf-parser only. Local repository, not yet published to
+the GitHub organization.
+
+The founding documents are `doc/design/{architecture,log,api}.md` — the
+specification, implemented as written; a discovered divergence amends the document,
+never quietly the code. The six phase-0 ADRs are decided: `RECORD-A-0001` froze the
+inline-term encoding (u64 term IDs on disk, u32 resident with a 28-bit inline
+payload) after its measurement gate ran; `A-0002` derived facts are not logged in
+v1 (replay ends with a materialization pass); `A-0003` every literal lives in the
+log, no blob store; `A-0004` six triple orders with `G` as residual tiebreaker, no
+graph-first permutations; `A-0005` snapshots are refcounted resources
+(acquire/use/release) and v1 permutation maintenance is flat copy-on-write;
+`A-0006` validation is a hook wired at store construction — odin-rdf-shacl will own
+the catalogue and validator, this store owns `Apply`, the overlay view, and
+`Enforce`/`Record` semantics.
+
+Status **as of 2026-08-19 (evening — the founding morning's "phase 1 in progress"
+became "complete" the same day)**: `RECORD-I-0001` (the log of record: format,
+write path, verification, tooling) **is complete; format version 1 holds real,
+proven bytes and the frozen ADRs are no longer revisable.** All six tasks:
+`T-0001` the pure encoding layer, golden vectors computed by an independent
+Python script so the bytes answer to the document; `T-0002` the single-writer
+append path behind the injectable `File_Ops` seam, crash-swept at every operation
+cut point (no acknowledged epoch lost, nothing partial ever read as a record;
+rotation happens *before* an append, never after); `T-0003` the open path —
+`verify` (read-only) and `recover`, torn-tail recovery under §7.2's position
+rule, with three implementation-discovered clarifications amended into `log.md`
+(among them: a CRC-failed frame that provably ends before the file does halts as
+corruption rather than truncating — it is evidence, not debris); `T-0004` replay
+behind the `Consumer` seam the resident store will bind — one verifying reader
+with delivery threaded through it, and a judged/altered split proven test by
+test: a chain-perfect log that lies about what it says verifies and refuses to
+replay; `T-0005` the `record` CLI (`verify`/`dump`/`head`) in `tool/`, dump being
+the seam's second consumer with N-Quads from the parser repo's emitter — building
+it surfaced a latent format collision (the §5.3 default-graph sentinel, ID 1,
+against dictionary ids that start at 1), resolved by amendment: **the
+default-graph sentinel is 0**, the same "none" actor and reason use; `T-0006` the
+proof layer — an independent Python verifier written from `log.md` alone
+(`tests/verify/`, ~270 lines of stdlib, every constant citing its section),
+agreeing with the Odin verifier verdict for verdict, head hash and epoch
+included, over a 29-case fault corpus on every `make test`, plus the ISMS-scale
+measurement: **verify 105–272 ms, replay 166–342 ms** across both §9 epoch shapes
+(16.9–38.4 MB logs, 4×10⁵ ops, ~10⁵ terms) — an order of magnitude inside the
+vision's sub-second criterion. Writing the Python verifier surfaced no
+documentation bug, which is what the amend-don't-diverge convention was for.
+
+Next: `RECORD-I-0002` (the resident store: replay-built projection and the
+snapshot read API) — fact table, dictionary arena, six permutations, refcounted
+snapshots, the `api.md` §12 read API, and writer resume; `Apply` and the
+validation hook stay deferred to the initiative after, where `bind.md`'s asks
+land. Note for dev machines: `make test` now requires `python3` (the
+cross-implementation suite); the *library* still has no external dependency
+beyond the parser.
+
+Two deliberate departures from family conventions, both recorded in the repo:
+**no `Term_ID` width matrix** — both widths are fixed by design because the inline
+encoding is frozen at first write; and **POSIX only** — Linux is the production
+environment, darwin is development (F_FULLFSYNC with fsync fallback), and there is
+no Windows `File_Ops`; sync-primitive CI tests may be gated to Linux.
+
 ### odin-rdf-sparql — `SPARQL-*` — parser and evaluation engine complete
 
 SPARQL 1.1 Query with the SPARQL 1.2 surface (triple terms, reified triples, annotations,
@@ -248,6 +325,8 @@ Out of scope: SHACL Advanced Features (rules, functions), inference/entailment, 
   store's own sources import it.
 - **Dual-width testing.** `Term_ID` width is a build-time choice (`-define:RDF_STORE_TERM_ID_BITS`,
   64-bit default, 32-bit opt-in). Anything width-sensitive is tested at both.
+  (odin-rdf-record is exempt by design: its widths are fixed because the inline
+  encoding is frozen at first write — see its section.)
 - **Deployment shape** driving the design: ~200 processes per physical machine, each embedding
   a store. CPU frugality is a first-order requirement.
 
@@ -269,5 +348,15 @@ odin-rdf-store, odin-rdf-sparql, odin-rdf-shacl (Makefile-driven; `make help` li
 make test    # full suite at both Term_ID widths
 make check   # vet every package at the default width
 make bench   # build and run benchmarks with release flags
+make clean   # remove build/
+```
+
+odin-rdf-record (Makefile-driven; no width matrix — its widths are fixed by design;
+`make test` requires python3 for the cross-implementation verifier):
+
+```
+make test    # the test suite, the fault corpus, and the scale measurement
+make check   # vet every package with -vet -strict-style
+make tool    # build the record CLI (verify, dump, head) into build/record
 make clean   # remove build/
 ```
