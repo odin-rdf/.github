@@ -21,6 +21,9 @@ odin-rdf-record   system of record — a second store beside odin-rdf-store, not
                   replacement: hash-chained log + memory-resident projection.
                   Consumes the parser only; sparql and shacl target it in the
                   future and the store today.
+                  (Amended 2026-08-20: the family decided to move shacl, then
+                  sparql, onto odin-rdf-record and retire odin-rdf-store; the
+                  store's line above stands as the record.)
 ```
 
 Each repo is developed with the **Metis** tools and Metis MCP: `.metis/vision.md` is
@@ -155,7 +158,7 @@ task at all.
 two introspection procedures — with both consumers pinned to `v0.5.0`. Nothing schedules the
 v0.6.0 that would let either sibling consume any of them.
 
-### odin-rdf-record — `RECORD-*` — the log of record complete (format v1)
+### odin-rdf-record — `RECORD-*` — log, resident store and write path complete (format v1)
 
 A tamper-evident **system of record**: an append-only, hash-chained, segmented log
 is the only durable representation, replayed on every start into a memory-resident
@@ -166,7 +169,12 @@ third party from the format specification alone. A second store *beside*
 odin-rdf-store, not a replacement, a fork, or a backend of it — the two share no
 durable format, no transaction model, and no ID scheme, and odin-rdf-store is
 untouched. Consumes odin-rdf-parser only. Local repository, not yet published to
-the GitHub organization.
+the GitHub organization. **Amended 2026-08-20 (RECORD-I-0003):** the sentence
+stands as the founding stance; the family decided that day to move odin-rdf-shacl
+and then odin-rdf-sparql off odin-rdf-store and onto this repository, the
+siblings adapting to it and not the reverse, and to retire odin-rdf-store
+afterwards. The two still share no format, model or ID scheme — "not a
+replacement" is what no longer describes the plan.
 
 The founding documents are `doc/design/{architecture,log,api}.md` — the
 specification, implemented as written; a discovered divergence amends the document,
@@ -218,6 +226,44 @@ validation hook stay deferred to the initiative after, where `bind.md`'s asks
 land. Note for dev machines: `make test` now requires `python3` (the
 cross-implementation suite); the *library* still has no external dependency
 beyond the parser.
+
+**Superseded 2026-08-20 — both done the same day.** `RECORD-I-0002` (the
+resident store) completed: `store_open` boots end to end in 205–278 ms at ISMS
+scale, serving the `api.md` §12 read API over refcounted snapshots. Then
+`RECORD-I-0003` (the write path): **`apply(s, Changeset)` is the one entrance** —
+asserts and retracts as `rdf.Quad`s with actor, reason and a `Mode`; `log.md`
+§5.3's preconditions judged against head *and* the changeset's own earlier ops,
+refused with a typed `Apply_Error` naming the op; resident mutation *before*
+the fsync in writer-private state no published reader can observe (decision 1,
+amending `log.md` §7.1 and `RECORD-A-0006`), rolled back exactly on failure;
+then append, fsync, publish. **A `Validator` is wired once at `store_open`** and
+receives the candidate as an ordinary `Snapshot` at the new epoch — the overlay
+view is the real read API over the post-state; `Enforce` refuses before a byte
+is written, `Record` commits and reports, and **the log does not record that a
+judge objected** (decision 5). Around it: the term encoder and intern; the
+published **term index** replacing the dictionary map (reads safe under a live
+writer — acquire takes a mutex, the read path none, and the index set carries
+copies of every list a reader indexes, a divergence from `api.md` §13.8 found
+and closed); `snapshot_kind` and `snapshot_exists`; the **writer inside the
+`Store`** (`store_open` fills `s.writer`, `store_close` releases both);
+**`Mem_FS`/`mem_file_ops`**, the in-memory seam for suites and scratch;
+**`record/ingest`** — `turtle`, `ntriples`, `trig`, `nquads` → `[]Op` with
+`blank_prefix` scoping, a subpackage so the core still imports `rdf` alone; and
+the consumer id range `CONSUMER_ID_FIRST ..= CONSUMER_ID_LAST` stated in
+`api.md` §3. Measured: one commit at 4×10⁵ facts **31–35 ms** on the memory seam
+(the permutation rebuild of `RECORD-A-0005`'s flat copy-on-write — its trigger
+re-read, the delta structure stays deferred), bulk load of the ISMS corpus as
+one epoch 222–267 ms, resident 21.2 MB. Proven by replay equivalence on both
+seams, a crash sweep across `apply`, both verifiers over apply-written logs, a
+reader/writer torture under the memory checker, and the W3C suites through
+`ingest` by reference.
+
+**What moves next is on the siblings' side**: the odin-rdf-shacl port
+initiative (unblocked), then odin-rdf-sparql's. What they need from here —
+a published repository and a tag to pin, `-collection:record=../odin-rdf-record`,
+the POSIX-only note for a Windows leg (`mem_file_ops` is platform-free), and a
+seven-point handoff mapping the store's read and write APIs onto theirs — is in
+`RECORD-I-0003`'s Status section. Publication and tagging are the owner's.
 
 Two deliberate departures from family conventions, both recorded in the repo:
 **no `Term_ID` width matrix** — both widths are fixed by design because the inline
