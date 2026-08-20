@@ -59,9 +59,10 @@ Out of scope: RDF/XML, JSON-LD, N3 — and everything downstream.
 **v0.1.1 (2026-08-20)** — one scanner fix, `RDF-T-0025`: an unterminated long string
 literal reported the EOF line and a negative column (the literal's own newlines had moved
 the line start past the opener); it now reports the opener. Found by odin-rdf-record's
-W3C sweep (RECORD-T-0017), unseeable by any vendored suite. odin-rdf-shacl pins it;
-odin-rdf-record, odin-rdf-store and odin-rdf-sparql still pin `v0.1.0`, correctly — nothing
-they read changed. **odin-rdf-sparql's own query scanner has a line-for-line copy of the
+W3C sweep (RECORD-T-0017), unseeable by any vendored suite. odin-rdf-shacl pins it, and is
+the only consumer with a pin to move: odin-rdf-record has no CI yet and builds against the
+parser's `main` locally; odin-rdf-sparql is left alone by decision until it has been ported
+to odin-rdf-record; odin-rdf-store is on its way out and is not touched. **odin-rdf-sparql's own query scanner has a line-for-line copy of the
 defect** (`sparql/scanner.odin`, `scan_long_string`), and odin-rdf-app prints that
 position; not yet filed there.
 
