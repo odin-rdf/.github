@@ -2,7 +2,7 @@
 
 This directory is not itself a repository. It is the shared checkout root for five
 independent repositories that together form a layered RDF toolchain for Odin —
-four on GitHub, plus odin-rdf-record (founded 2026-08-19), local until published —
+four on GitHub, plus odin-rdf-record (founded 2026-08-19; published and tagged `v0.1.0` on 2026-08-20) —
 written from scratch in Odin with no external dependencies (LMDB being the single
 exception — and since 2026-08-07 no longer an isolated one: it is the only storage
 backend, so everything from odin-rdf-store up links it; **amended 2026-08-19**:
@@ -169,7 +169,9 @@ third party from the format specification alone. A second store *beside*
 odin-rdf-store, not a replacement, a fork, or a backend of it — the two share no
 durable format, no transaction model, and no ID scheme, and odin-rdf-store is
 untouched. Consumes odin-rdf-parser only. Local repository, not yet published to
-the GitHub organization. **Amended 2026-08-20 (RECORD-I-0003):** the sentence
+the GitHub organization *(published to `odin-rdf/odin-rdf-record` and tagged
+`v0.1.0` on 2026-08-20 — the pin the sibling ports use)*. **Amended 2026-08-20
+(RECORD-I-0003):** the sentence
 stands as the founding stance; the family decided that day to move odin-rdf-shacl
 and then odin-rdf-sparql off odin-rdf-store and onto this repository, the
 siblings adapting to it and not the reverse, and to retire odin-rdf-store
@@ -263,7 +265,60 @@ initiative (unblocked), then odin-rdf-sparql's. What they need from here —
 a published repository and a tag to pin, `-collection:record=../odin-rdf-record`,
 the POSIX-only note for a Windows leg (`mem_file_ops` is platform-free), and a
 seven-point handoff mapping the store's read and write APIs onto theirs — is in
-`RECORD-I-0003`'s Status section. Publication and tagging are the owner's.
+`RECORD-I-0003`'s Status section. Publication and tagging are the owner's
+*(done 2026-08-20: `odin-rdf/odin-rdf-record`, tag `v0.1.0` at `e29764e`)*.
+
+**Handoff for the sibling ports — what a session working on odin-rdf-shacl or
+odin-rdf-sparql needs to know (2026-08-20, evening).** Neither port initiative
+exists yet; they are created on the siblings' side, shacl first, sparql second.
+The seven-point API mapping and the CI list are in `RECORD-I-0003`'s Status
+(`odin-rdf-record/.metis/initiatives/RECORD-I-0003/initiative.md`); what is *not*
+there:
+
+- **The pin mechanism is the existing one.** Both siblings' `ci.yml` check out
+  the parser and the store as sibling directories at released tags
+  (`odin-rdf-parser@v0.1.0`, `odin-rdf-store@v0.6.0`, `actions/checkout@v5` with
+  `repository:`/`ref:`/`path:`), and reach them through `COLL :=
+  -collection:rdf=../odin-rdf-parser -collection:store=../odin-rdf-store` in the
+  Makefile, mirrored in `ols.json`. The port adds `odin-rdf-record@v0.1.0` the
+  same way as `-collection:record=../odin-rdf-record`; `rdf:` stays because the
+  record's sources import it. shacl's CI comment explains its store *floor*
+  history (`SHACL-T-0020`, `-T-0028`, `-T-0030`) — the record pin wants the same
+  kind of comment. Windows legs: `record` has no Windows `File_Ops`; suites use
+  `mem_file_ops` (platform-free, `Mem_FS`), and the posix file is
+  `#+build linux, darwin`, so `record` compiles on Windows without it.
+- **What a harness call site becomes.** `open_ephemeral` → `Mem_FS` +
+  `store_open(&s, "x", mem_file_ops(&fs))` … `store_close(&s)` (every snapshot
+  released first — `store_destroy` asserts it); `load_turtle(ds, src, graph)` →
+  `ingest.turtle(src, graph, allocator, blank_prefix = <test name>, base = …)`
+  + `apply(&s, {ops = ops})` + `ingest.ops_destroy(ops, allocator)`;
+  `blank_prefix` is the `Load_Scope`, and **must be label characters** (`t1_`,
+  not `t1/`) if anything is ever dumped and re-ingested. The ops own their terms;
+  `base` is needed for documents with relative IRIs (the W3C eval inputs resolve
+  against `https://w3c.github.io/rdf-tests/rdf/rdf11/rdf-turtle/`). Triple terms
+  (20 of sparql's vendored data files) are refused by `apply` with
+  `.Unsupported_Term` at the op — a recorded backend limit on sparql's side.
+- **Term identity differs from odin-rdf-store in two places that affect SPARQL
+  value semantics:** language tags are lowercased on intern (`"x"@EN` and
+  `"x"@en` are one term — the canonical encoding's rule), and a non-canonical
+  numeric lexical form (`"01"^^xsd:integer`) is a *different term* from the
+  inlined canonical one (`"1"`) — term identity is RDF's; value equality is the
+  engine's job.
+- **The read side in one breath.** Ids are `u32`; `0` is unbound in a `Pattern`,
+  `MATCH_DEFAULT_GRAPH` binds the default graph in G; `Filter{origin = .Any}` —
+  origin must be stated; `range_iter`/`scan_next` stream fact ids, `snapshot_fact`
+  reads one; `snapshot_kind` replaces `id_kind`; `snapshot_epoch_meta` carries
+  actor/reason/wall; a `Snapshot` is acquire/use/release and a `Validator`'s
+  candidate snapshot must not be retained. The consumer id range for the
+  engines' own values is `CONSUMER_ID_FIRST ..= CONSUMER_ID_LAST`.
+- **Process.** The Metis MCP reports "no active workspace" when the session's
+  working directory is this family root; work on a repo from inside it (or edit
+  `.metis/*.md` directly, keeping the frontmatter's closing `---`). This file
+  lives in the `odin-rdf/.github` repository (the family root is a git repo of
+  its own), so family-level amendments are committed and pushed there. Tags are
+  annotated, `Release vX: title` with a bulleted body. One observation owed to
+  odin-rdf-parser: on an unterminated long string the scanner error's `column`
+  comes out negative while `offset` and `line` are right (RECORD-T-0017).
 
 Two deliberate departures from family conventions, both recorded in the repo:
 **no `Term_ID` width matrix** — both widths are fixed by design because the inline
