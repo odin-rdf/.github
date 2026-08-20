@@ -56,6 +56,15 @@ is bounded by nesting depth and the prefix map, not document size.
 
 Out of scope: RDF/XML, JSON-LD, N3 — and everything downstream.
 
+**v0.1.1 (2026-08-20)** — one scanner fix, `RDF-T-0025`: an unterminated long string
+literal reported the EOF line and a negative column (the literal's own newlines had moved
+the line start past the opener); it now reports the opener. Found by odin-rdf-record's
+W3C sweep (RECORD-T-0017), unseeable by any vendored suite. odin-rdf-shacl pins it;
+odin-rdf-record, odin-rdf-store and odin-rdf-sparql still pin `v0.1.0`, correctly — nothing
+they read changed. **odin-rdf-sparql's own query scanner has a line-for-line copy of the
+defect** (`sparql/scanner.odin`, `scan_long_string`), and odin-rdf-app prints that
+position; not yet filed there.
+
 ### odin-rdf-store — `STORE-*` — one backend, over LMDB
 
 The queryable storage layer and, more importantly, the **match interface** that every
@@ -385,7 +394,7 @@ via the parser, and the data graph is an epoch-pinned **snapshot of odin-rdf-rec
 through one file of session verbs (`shacl/session.odin`) and nothing else. **One package,
 `shacl`**, importing `rdf` and `record` only — compilation, target resolution, property
 paths, the constraint catalogue, `sh:ValidationReport` building, and the `Validator`
-binding. Dependencies: odin-rdf-parser `v0.1.0`, odin-rdf-record `v0.3.0` as a floor. No
+binding. Dependencies: odin-rdf-parser `v0.1.1`, odin-rdf-record `v0.3.0` as a floor. No
 LMDB, no native code, no width matrix; the suites open every store over the record's
 platform-free memory seam, so all three CI runners run the same `make test`.
 
