@@ -388,7 +388,7 @@ Out of scope: SPARQL Update, the HTTP and Graph Store protocols, federation (SER
 full-text search. (Result serialization *was* out of scope and no longer is — `sparql/srj`
 and `sparql/srx` ship the JSON and XML results formats.)
 
-### odin-rdf-shacl — `SHACL-*` — SHACL Core complete, on odin-rdf-record
+### odin-rdf-shacl — `SHACL-*` — SHACL Core complete, on odin-rdf-record (v0.2.0)
 
 Shape-based validation, a peer of odin-rdf-sparql: shapes graphs are ordinary RDF loaded
 via the parser, and the data graph is an epoch-pinned **snapshot of odin-rdf-record**, read
@@ -459,8 +459,11 @@ Four contracts to know before extending it:
 Remaining: SHACL-SPARQL (`sh:sparql` and SPARQL-based constraint components), the only thing
 that would add odin-rdf-sparql as a dependency — the Makefile notes where the `sparql:`
 collection gets added, and `docs/handover-sparql.md` carries the phase's starting point with
-a post-port translation note. **SHACL Core does not depend on it and will not.** No release
-has been tagged since the port; `v0.1.0` is the store-era tag, and the next is the owner's.
+a post-port translation note. **SHACL Core does not depend on it and will not.** **Released
+as `v0.2.0` on 2026-08-20** (tag at `b3ca168`, GitHub release with notes) — the record
+engine's first tag; `v0.1.0` is the store-era engine. The owner's reading: complete, and
+the version to use for the foreseeable future unless a consumer or the record's API moving
+for the sparql port says otherwise. No shacl consumer pins a tag today.
 
 Out of scope: SHACL Advanced Features (rules, functions), inference/entailment, servers.
 
