@@ -6,7 +6,10 @@ four on GitHub, plus odin-rdf-record (founded 2026-08-19; published and tagged `
 written from scratch in Odin with no external dependencies (LMDB being the single
 exception — and since 2026-08-07 no longer an isolated one: it is the only storage
 backend, so everything from odin-rdf-store up links it; **amended 2026-08-19**:
-odin-rdf-record stands apart with no LMDB and no external dependency at all). Each
+odin-rdf-record stands apart with no LMDB and no external dependency at all; **amended
+2026-08-20, evening**: odin-rdf-shacl no longer links it either — it moved onto
+odin-rdf-record, SHACL-I-0004 — so today LMDB is linked by odin-rdf-store and
+odin-rdf-sparql, and after sparql's port by the store alone, which is to be retired). Each
 repo is independently usable and depends only *downward*.
 
 ```
@@ -24,6 +27,9 @@ odin-rdf-record   system of record — a second store beside odin-rdf-store, not
                   (Amended 2026-08-20: the family decided to move shacl, then
                   sparql, onto odin-rdf-record and retire odin-rdf-store; the
                   store's line above stands as the record.)
+                  (Amended 2026-08-20, evening: shacl's move is done —
+                  odin-rdf-shacl consumes parser + record, nothing else.
+                  sparql is still on the store until its own port.)
 ```
 
 Each repo is developed with the **Metis** tools and Metis MCP: `.metis/vision.md` is
@@ -170,7 +176,16 @@ odin-rdf-store, not a replacement, a fork, or a backend of it — the two share 
 durable format, no transaction model, and no ID scheme, and odin-rdf-store is
 untouched. Consumes odin-rdf-parser only. Local repository, not yet published to
 the GitHub organization *(published to `odin-rdf/odin-rdf-record` and tagged
-`v0.1.0` on 2026-08-20 — the pin the sibling ports use)*. **Amended 2026-08-20
+`v0.1.0` on 2026-08-20 — the pin the sibling ports use; **the repository was
+private at first and the first consumer CI run failed on that — it is public
+now**. Two more tags the same day, both cut from findings of the shacl port:
+`v0.2.0` (RECORD-T-0019, `ingest` emits a document's *set* of statements — a
+legal Turtle document that states a triple twice loads, where before `apply`
+refused the second assert; one W3C SHACL entry cannot load below it) and
+`v0.3.0` (RECORD-T-0020, distinct `Term_ID`/`Fact_ID`/`Epoch` types across the
+public API — an engine holding `u32` ids does not compile against it; holding
+`record.Term_ID` natively is the adaptation). **`v0.3.0` is the pin, and a floor,
+in odin-rdf-shacl.**)*. **Amended 2026-08-20
 (RECORD-I-0003):** the sentence
 stands as the founding stance; the family decided that day to move odin-rdf-shacl
 and then odin-rdf-sparql off odin-rdf-store and onto this repository, the
@@ -261,7 +276,8 @@ reader/writer torture under the memory checker, and the W3C suites through
 `ingest` by reference.
 
 **What moves next is on the siblings' side**: the odin-rdf-shacl port
-initiative (unblocked), then odin-rdf-sparql's. What they need from here —
+initiative (unblocked), then odin-rdf-sparql's. *(Superseded 2026-08-20, evening:
+shacl's port is done — see below.)* What they need from here —
 a published repository and a tag to pin, `-collection:record=../odin-rdf-record`,
 the POSIX-only note for a Windows leg (`mem_file_ops` is platform-free), and a
 seven-point handoff mapping the store's read and write APIs onto theirs — is in
@@ -271,6 +287,19 @@ seven-point handoff mapping the store's read and write APIs onto theirs — is i
 **Handoff for the sibling ports — what a session working on odin-rdf-shacl or
 odin-rdf-sparql needs to know (2026-08-20, evening).** Neither port initiative
 exists yet; they are created on the siblings' side, shacl first, sparql second.
+*(Superseded the same evening: **shacl's port is done** — `SHACL-I-0004`, seven
+tasks, one day, all 98 W3C entries green on the record, `make test` with parser
+and record as the only dependencies. **sparql's is next**, and its initiative
+does not exist yet. The handoff for it is `SHACL-T-0037`'s Status
+(`odin-rdf-shacl/.metis/initiatives/SHACL-I-0004/tasks/SHACL-T-0037.md`): what
+the port cost, the call-site patterns that worked, the record facts an engine
+must know (a candidate is the delta; `.Record` commits a violation; terms are not
+epoch-scoped; language tags fold on intern; non-canonical numerics are distinct
+terms; inlineable literals always resolve; triple terms are refused), and the
+note that shacl's no-dual-backend and one-and-only-store decisions were made
+for shacl — sparql asks the owner, not assumes. The bullets below stand as the
+record and are still accurate, with one correction: pin `v0.3.0` or later, not
+`v0.1.0`.)*
 The seven-point API mapping and the CI list are in `RECORD-I-0003`'s Status
 (`odin-rdf-record/.metis/initiatives/RECORD-I-0003/initiative.md`); what is *not*
 there:
@@ -349,31 +378,56 @@ Out of scope: SPARQL Update, the HTTP and Graph Store protocols, federation (SER
 full-text search. (Result serialization *was* out of scope and no longer is — `sparql/srj`
 and `sparql/srx` ship the JSON and XML results formats.)
 
-### odin-rdf-shacl — `SHACL-*` — SHACL Core complete (v0.1.0)
+### odin-rdf-shacl — `SHACL-*` — SHACL Core complete, on odin-rdf-record
 
-Shape-based validation, a peer of odin-rdf-sparql on the same foundation: shapes graphs are
-ordinary RDF loaded via the parser, and the data graph is read through the store's match
-interface alone, so the shapes model binds to any backend the store offers. Packages:
-`shacl` (backend-independent core — compilation, target resolution, property paths, the
-constraint catalogue, `sh:ValidationReport` building) and `shacl/kvstore` (the validator
-instantiated against the backend, a peer rather than a layer).
+Shape-based validation, a peer of odin-rdf-sparql: shapes graphs are ordinary RDF loaded
+via the parser, and the data graph is an epoch-pinned **snapshot of odin-rdf-record**, read
+through one file of session verbs (`shacl/session.odin`) and nothing else. **One package,
+`shacl`**, importing `rdf` and `record` only — compilation, target resolution, property
+paths, the constraint catalogue, `sh:ValidationReport` building, and the `Validator`
+binding. Dependencies: odin-rdf-parser `v0.1.0`, odin-rdf-record `v0.3.0` as a floor. No
+LMDB, no native code, no width matrix; the suites open every store over the record's
+platform-free memory seam, so all three CI runners run the same `make test`.
 
-Status: all twenty-nine non-SPARQL constraint components of §4 implemented, and all 98
-entries of the W3C SHACL 1.0 suite's `core/` tree passing against kvstore at both
-`Term_ID` widths — no skip list, no expected-failure file. Key ADRs: `SHACL-A-0001` (the
-shapes model — it owns every term it holds, so it outlives the store it compiled from and
-binds to any other) and `SHACL-A-0002` (suppressed validation: conformance without results).
-`make check` still runs a `purity` target that greps a built binary for `mdb_` symbols. It
-used to protect a consumer that wanted no LMDB in its link; with memstore gone there is no
-such consumer, so it now catches a stray `store:store/kvstore` import in the core — internal
-hygiene guarding the seam a future backend would use.
+**It was ported on 2026-08-20 (`SHACL-I-0004`, seven tasks, one day)** from odin-rdf-store,
+against which it was written backend-independent with a `shacl/kvstore` instantiation, a
+`purity` target grepping a binary for `mdb_` symbols, and a `Term_ID` width matrix — all
+deleted, not retained. Two owner decisions govern it and are recorded in the repo's vision
+Current State: **no dual-backend goal at any point**, and **odin-rdf-record is the one and
+only store, forever** — where targeting it directly made code simpler, faster or smaller,
+that path was taken. Those decisions were made for shacl; the sparql port asks rather than
+inherits. The old sections of this file and the repo's documents stand under dated notes.
 
-**Validate-before-commit is reachable** since `SHACL-T-0029`: `session_init_txn` binds a
-`Session` to a caller's `^kvstore.Txn`, so a candidate built inside a write transaction is
-validated against *the dataset that write would produce*. The alternative an isolated
-store steers you toward is wrong rather than slow — every constraint that must consult
-existing data reads an empty world and passes vacuously. `session_init` still means
-autocommit and is still the default.
+Status: all twenty-nine non-SPARQL constraint components of §4, and all 98 entries of the
+W3C SHACL 1.0 `core/` tree green against the record — no skip list, no expected-failure
+file. **The read counts survived the port to the integer** (7503 on the reference
+configuration, and every other pin): the engine asks the record exactly the questions it
+asked LMDB, and only the cost moved — `validate` 4.69 → 1.17 ms, `compile` 146 → 35 µs,
+peak memory the old 32-bit figure (20868 B). `make bench` is two builds, because read
+counting is a build-time switch in the engine (`SHACL_COUNT_READS`) rather than a seam.
+Key ADRs: `SHACL-A-0001` (the shapes model owns every term it holds — on the record a
+stronger necessity than the one it was decided on, since `session_term` borrows the
+dictionary arena that closing the store frees) and `SHACL-A-0002` (suppressed validation),
+both amended 2026-08-20.
+
+**Validate-before-commit is the record's `Validator` hook** (`shacl/validator.odin`,
+replacing `session_init_txn`): a compiled model wired in at `record.store_open`, handed
+*the dataset the write would produce* — head plus changeset, as an ordinary snapshot at
+the new epoch — before a byte is written. `.Enforce` refuses (`apply` returns `.Rejected`,
+nothing written); `.Record` commits and reports; the log does not record that a validator
+objected (RECORD-A-0006 decision 5); a `Failure` is a refusal. The argument is unchanged:
+validating an isolated candidate is wrong rather than slow — every constraint that must
+consult existing data reads an empty world and passes vacuously. **As-of validation is
+`record.store_at(&db, epoch)`** where the present uses `store_latest`, nothing below the
+session changing; the coordinate is the epoch, and terms are not epoch-scoped (facts are),
+so one compiled model binds at any epoch.
+
+Two term-identity shifts came with the store and moved no verdict: language tags fold to
+lowercase on intern (so the `sh:hasValue`/`sh:in` exposure `docs/language-tag-status.md`
+tracked is closed there, and the latent one is report rendering — the family's parser-side
+fold decision is flagged for discussion, not rescinded), and inlineable literals are always
+resolvable (a small canonical integer named by `sh:targetNode` is bound even when absent
+from the data).
 
 Four contracts to know before extending it:
 
@@ -394,7 +448,9 @@ Four contracts to know before extending it:
 
 Remaining: SHACL-SPARQL (`sh:sparql` and SPARQL-based constraint components), the only thing
 that would add odin-rdf-sparql as a dependency — the Makefile notes where the `sparql:`
-collection gets added. **SHACL Core does not depend on it and will not.**
+collection gets added, and `docs/handover-sparql.md` carries the phase's starting point with
+a post-port translation note. **SHACL Core does not depend on it and will not.** No release
+has been tagged since the port; `v0.1.0` is the store-era tag, and the next is the owner's.
 
 Out of scope: SHACL Advanced Features (rules, functions), inference/entailment, servers.
 
@@ -420,14 +476,17 @@ Out of scope: SHACL Advanced Features (rules, functions), inference/entailment, 
   that the old paragraph stands as the record of what was true, with a dated note saying
   what moved.
 - **Sibling checkouts, reached via collections** — never vendored copies:
-  `-collection:rdf=../odin-rdf-parser`, `-collection:store=../odin-rdf-store`. Declared in
-  each `Makefile` and mirrored in `ols.json`. Note that a collection resolves in the
-  *importing* compilation: a project using the store must also declare `rdf:`, because the
-  store's own sources import it.
+  `-collection:rdf=../odin-rdf-parser`, `-collection:store=../odin-rdf-store`,
+  `-collection:record=../odin-rdf-record` (shacl since 2026-08-20, in place of `store:`).
+  Declared in each `Makefile` and mirrored in `ols.json`. Note that a collection resolves in
+  the *importing* compilation: a project using the store or the record must also declare
+  `rdf:`, because their own sources import it.
 - **Dual-width testing.** `Term_ID` width is a build-time choice (`-define:RDF_STORE_TERM_ID_BITS`,
   64-bit default, 32-bit opt-in). Anything width-sensitive is tested at both.
   (odin-rdf-record is exempt by design: its widths are fixed because the inline
-  encoding is frozen at first write — see its section.)
+  encoding is frozen at first write — see its section. odin-rdf-shacl is exempt since
+  2026-08-20 for the same reason, being on the record; the convention now binds
+  odin-rdf-store and odin-rdf-sparql.)
 - **Deployment shape** driving the design: ~200 processes per physical machine, each embedding
   a store. CPU frugality is a first-order requirement.
 
@@ -443,7 +502,9 @@ odin test tests/readme        # the README's compile-verified examples
 odin run bench -o:speed       # throughput benchmarks
 ```
 
-odin-rdf-store, odin-rdf-sparql, odin-rdf-shacl (Makefile-driven; `make help` lists targets):
+odin-rdf-store, odin-rdf-sparql, odin-rdf-shacl (Makefile-driven; `make help` lists targets;
+**odin-rdf-shacl since 2026-08-20**: `make test` is one run with no width matrix, `make check`
+ends with an import-alias grep, and `make bench` is two builds — timing, then instrumented):
 
 ```
 make test    # full suite at both Term_ID widths
