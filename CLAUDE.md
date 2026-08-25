@@ -94,7 +94,9 @@ position; not yet filed there. *(Amended 2026-08-25: **it is filed and fixed** �
 `SPARQL-T-0042`, the same change on the same branch, with a scanner test pinning the
 opener's line and column across newlines. odin-rdf-app was printing `at 4:-10`; the call
 site is `src/main.odin:235` and it needs no change. odin-rdf-sparql is no longer "left
-alone" either — its port is done and it pins `v0.1.2`.)*
+alone" either — its port is done and it pins `v0.1.2`.)* *(Amended 2026-08-25, evening:
+the call site is `src/main.odin:314` — odin-rdf-app was ported the same day and the file
+grew above it. It still needs no change.)*
 
 **v0.1.2 (2026-08-25)** — one resolver fix, `RDF-T-0026`, **filed by a consumer against a
 headline behaviour**: `resolve()` ran *absolute* IRIs through RFC 3986 §5.2 reference
@@ -577,6 +579,17 @@ carry and for the same reason. **No consumer pins it** — odin-rdf-app reaches 
 repository by path and is still store-era, which is a fact about that application and not
 a constraint on this one; the tag exists so that odin-rdf-shacl's SHACL-SPARQL phase, or
 anything later, pins a fixed point instead of tracking `main`.
+
+*(Amended 2026-08-25, evening: **odin-rdf-app is not store-era any more.** It was ported
+the same day this tag was cut — `store:` dropped, `sparql/kvstore` gone with it, one
+`record.store_latest` snapshot where a read transaction used to be, and no `Term_ID` width
+to pick — and it reaches both repositories by path, so it still pins nothing. The sentence
+above stands as the record; what it said about tags is unchanged, and **`v0.2.0` still has
+no pinning consumer.** Worth knowing about that application if a session lands in it: it
+is a demonstration in the checkout root, not one of the five repositories and not tracked
+by any of them, its `rdf/` tree and Makefile are a copy of `odin-vsuite`'s, and since the
+port it seeds its own record store with its own `src/rdfseed` — `make seed && make run` —
+where before it read an LMDB database no checkout could reproduce.)*
 
 ---
 
