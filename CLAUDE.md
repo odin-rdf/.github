@@ -568,8 +568,15 @@ era got (`SPARQL-T-0034`, `-T-0025`). **Triple terms are *cheaper* than they wer
 `snapshot_triple_parts` reads a stored triple term's three component ids with no
 allocation, no decode and no recursion, against odin-rdf-store's two round trips.
 
-**Unreleased.** `v0.1.0` is the store-era engine and is still the only tag; whether the
-port warrants one is the owner's call.
+~~**Unreleased.** `v0.1.0` is the store-era engine and is still the only tag; whether the
+port warrants one is the owner's call.~~ **Released as `v0.2.0` on 2026-08-25** (annotated
+tag at `b1f1667`, GitHub release with notes) — the record-era engine's first tag, cut the
+same evening the merge join landed and on a commit CI had just proved green on all three
+runners. `v0.1.0` remains the store-era engine, the same split odin-rdf-shacl's two tags
+carry and for the same reason. **No consumer pins it** — odin-rdf-app reaches this
+repository by path and is still store-era, which is a fact about that application and not
+a constraint on this one; the tag exists so that odin-rdf-shacl's SHACL-SPARQL phase, or
+anything later, pins a fixed point instead of tracking `main`.
 
 ---
 
