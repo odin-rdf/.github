@@ -90,7 +90,37 @@ the only consumer with a pin to move: odin-rdf-record has no CI yet and builds a
 parser's `main` locally; odin-rdf-sparql is left alone by decision until it has been ported
 to odin-rdf-record; odin-rdf-store is on its way out and is not touched. **odin-rdf-sparql's own query scanner has a line-for-line copy of the
 defect** (`sparql/scanner.odin`, `scan_long_string`), and odin-rdf-app prints that
-position; not yet filed there.
+position; not yet filed there. *(Amended 2026-08-25: **it is filed and fixed** —
+`SPARQL-T-0042`, the same change on the same branch, with a scanner test pinning the
+opener's line and column across newlines. odin-rdf-app was printing `at 4:-10`; the call
+site is `src/main.odin:235` and it needs no change. odin-rdf-sparql is no longer "left
+alone" either — its port is done and it pins `v0.1.2`.)*
+
+**v0.1.2 (2026-08-25)** — one resolver fix, `RDF-T-0026`, **filed by a consumer against a
+headline behaviour**: `resolve()` ran *absolute* IRIs through RFC 3986 §5.2 reference
+resolution and stripped their dot segments, base or no base, so
+`eXAMPLE://a/./b/../b/%63/%7bfoo%7d#xyz` was parsed as `eXAMPLE://a/b/%63/%7bfoo%7d#xyz` —
+a Turtle or TriG document loading an IRI it does not contain, which Turtle §6.3 does not
+permit and RDF 1.1 Concepts §3.2 forbids ("further normalization MUST NOT be performed").
+`resolve()` now returns a reference carrying a scheme byte for byte and never enters §5.2.
+A second half came with it, not in the report: §5.2.2's `R.path == ""` branch had been
+calling `remove_dot_segments` where the algorithm does not, invisible only while every
+base came back normalized from `resolve()` itself — so `RDF-T-0013`'s "bases are always
+dot-normalized" is now false and is amended there. Shared by `rdf/turtle` and `rdf/trig`;
+`rdf/triples` and `rdf/quads` import neither. 1045/1045 unchanged — **no vendored entry
+expected an absolute IRI to be normalized.**
+
+Two consumers should care, in opposite ways. **odin-rdf-sparql filed it** — from
+`SPARQL-T-0021`'s split, the DAWG entry named `normalization-02` turning out to assert
+that *no* normalization happens, which is this family's policy, and to fail only because
+the Turtle parser mangled the term — and pins `v0.1.2`, enabling `sparql10-i18n` at 5/5
+with nothing in its own sources changing. **odin-rdf-record should care most and has not
+moved**: `record/ingest` loads through this parser and the log is the durable
+representation, so below `v0.1.2` a system of record can log an IRI its source document
+did not contain — faithfully, tamper-evidently, and wrongly. It has no CI and builds
+against the parser's `main` locally, so it has the fix and no pin to state.
+odin-rdf-shacl loads shapes through the parser too and pins `v0.1.1`; odin-rdf-store is
+not touched.
 
 ### odin-rdf-store — `STORE-*` — RETIRABLE as of 2026-08-25, no consumers
 
@@ -463,14 +493,24 @@ backend-spanning procedure types, the harness `Backend` enum, the `store:` colle
 nine test files that existed only because there was an instantiation to test. **No
 `Term_ID` width matrix**: record's widths are fixed by design, so `make test` runs once,
 and all three CI runners run it, the suites opening every store over record's
-platform-free memory seam (`Mem_FS` + `mem_file_ops`). Pins: odin-rdf-parser `v0.1.0`,
-odin-rdf-record `v0.4.0` — `v0.4.0` was cut *for this port*, `RECORD-I-0004` building
+platform-free memory seam (`Mem_FS` + `mem_file_ops`). Pins: odin-rdf-parser `v0.1.2`
+*(`v0.1.0` until later the same day, when `RDF-T-0026` landed — the first parser bump this
+engine has ever needed, and it filed the bug)*, odin-rdf-record `v0.4.0` — `v0.4.0` was cut *for this port*, `RECORD-I-0004` building
 triple terms because the owner declined to let the port narrow a headline capability.
 
 **537 of 537 evaluated W3C entries across 38 enabled directories**, up from 512/37; 286
 tests in `make test`. The gain is triple-term evaluation restored, plus
 `sparql10-expr-builtin` enabled — which record's language-tag fold on intern made green
 without a line changing here.
+
+*(Amended 2026-08-25, later the same day: **542 across 39 directories, and 288 tests.**
+`sparql10-i18n` was enabled by odin-rdf-parser's `RDF-T-0026`, not by anything here — the
+same shape as the row above it, a directory going green because a layer below stopped
+being wrong. **`sparql11-subquery` is now the only vendored directory left dark**, and its
+ten RDF/XML data documents are a permanent ceiling rather than a task, so of the corpus's
+556 evaluable entries **546 pass**. The extra two tests are `SPARQL-T-0042`'s scanner
+position — this repository's own copy of `RDF-T-0025`, filed and fixed the same day — and
+the i18n suite.)*
 
 **The port moved cost, not behaviour, and it is measured** (`SPARQL-T-0036`). `bench/` was
 built *before* the port precisely so this could be checked (`SPARQL-T-0040`): **fourteen of
@@ -705,7 +745,9 @@ odin run bench -o:speed       # throughput benchmarks
 
 odin-rdf-store, odin-rdf-sparql, odin-rdf-shacl (Makefile-driven; `make help` lists targets;
 **odin-rdf-shacl since 2026-08-20**: `make test` is one run with no width matrix, `make check`
-ends with an import-alias grep, and `make bench` is two builds — timing, then instrumented):
+ends with an import-alias grep, and `make bench` is two builds — timing, then instrumented;
+**odin-rdf-sparql since 2026-08-25**: all three of those, for the same reasons — so the
+width-matrix comment below is true of odin-rdf-store alone):
 
 ```
 make test    # full suite at both Term_ID widths
