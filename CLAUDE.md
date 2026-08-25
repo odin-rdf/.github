@@ -9,7 +9,10 @@ backend, so everything from odin-rdf-store up links it; **amended 2026-08-19**:
 odin-rdf-record stands apart with no LMDB and no external dependency at all; **amended
 2026-08-20, evening**: odin-rdf-shacl no longer links it either — it moved onto
 odin-rdf-record, SHACL-I-0004 — so today LMDB is linked by odin-rdf-store and
-odin-rdf-sparql, and after sparql's port by the store alone, which is to be retired). Each
+odin-rdf-sparql, and after sparql's port by the store alone, which is to be retired; **amended
+2026-08-25**: sparql's port is done — SPARQL-I-0003 — so **odin-rdf-store is the only
+repository here that links LMDB, and it has no consumers left**. For everything anyone
+builds on today, "no external dependencies" is true without qualification). Each
 repo is independently usable and depends only *downward*.
 
 ```
@@ -30,6 +33,29 @@ odin-rdf-record   system of record — a second store beside odin-rdf-store, not
                   (Amended 2026-08-20, evening: shacl's move is done —
                   odin-rdf-shacl consumes parser + record, nothing else.
                   sparql is still on the store until its own port.)
+                  (Amended 2026-08-25: **sparql's move is done too**, SPARQL-I-0003.
+                  Both ports are complete and odin-rdf-store has no consumers.
+                  The shape of the family is now the one below.)
+```
+
+**The family as of 2026-08-25**, the diagram above standing as the record of how it
+got here:
+
+```
+odin-rdf-parser   formats + data model      ← the foundation
+      ↓
+odin-rdf-record   system of record — hash-chained log + memory-resident
+      ↓           projection, epoch-pinned snapshots. Consumes the parser
+      ↓           only. The one store, for both engines.
+      ↓
+odin-rdf-sparql   query engine              odin-rdf-shacl   validation engine
+                                            (peer of sparql; optionally consumes it)
+
+odin-rdf-store    RETIRABLE. No consumers since 2026-08-25. The last thing
+                  holding it was odin-rdf-sparql's port; that is done. It is
+                  still a working, tagged, tested LMDB store — retiring it is a
+                  decision about maintenance, not a repair. See the retirement
+                  handoff in odin-rdf-sparql's SPARQL-T-0039.
 ```
 
 Each repo is developed with the **Metis** tools and Metis MCP: `.metis/vision.md` is
@@ -66,7 +92,19 @@ to odin-rdf-record; odin-rdf-store is on its way out and is not touched. **odin-
 defect** (`sparql/scanner.odin`, `scan_long_string`), and odin-rdf-app prints that
 position; not yet filed there.
 
-### odin-rdf-store — `STORE-*` — one backend, over LMDB
+### odin-rdf-store — `STORE-*` — RETIRABLE as of 2026-08-25, no consumers
+
+**Amended 2026-08-25.** Both engines have been ported off this store —
+odin-rdf-shacl on 2026-08-20 (`SHACL-I-0004`), odin-rdf-sparql on
+2026-08-25 (`SPARQL-I-0003`) — so **nothing in the family depends on it**, and
+it is the only repository here that still links LMDB. It is not broken: it is a
+working, tagged, tested store with three unreleased capabilities on `main`
+(the `NAMED_GRAPHS` wildcard, `graphs`, `nodes`) that no consumer will ever
+ask for. **Retiring it is a decision about maintenance, not a repair**; the
+concrete handoff — what "retire" should mean, and what still points here — is
+in odin-rdf-sparql's `SPARQL-T-0039`. The section below is left as written.
+
+### odin-rdf-store — `STORE-*` — one backend, over LMDB (superseded 2026-08-25)
 
 The queryable storage layer and, more importantly, the **match interface** that every
 downstream engine programs against: `match(subject, predicate, object, graph)` with
@@ -318,7 +356,9 @@ verifiers still agreeing over the fault corpus — the Python one needed one
 constant changed, for the header's sake and not the encoding's.
 
 **What moves next is on the siblings' side**: the odin-rdf-shacl port
-initiative (unblocked), then odin-rdf-sparql's. *(Superseded 2026-08-20, evening:
+initiative (unblocked), then odin-rdf-sparql's. *(Both done as of
+2026-08-25 — shacl 2026-08-20, sparql `SPARQL-I-0003`. odin-rdf-record's
+consumers are now both engines, and it is the family's only store.)* *(Superseded 2026-08-20, evening:
 shacl's port is done — see below.)* What they need from here —
 a published repository and a tag to pin, `-collection:record=../odin-rdf-record`,
 the POSIX-only note for a Windows leg (`mem_file_ops` is platform-free), and a
@@ -332,7 +372,10 @@ exists yet; they are created on the siblings' side, shacl first, sparql second.
 *(Superseded the same evening: **shacl's port is done** — `SHACL-I-0004`, seven
 tasks, one day, all 98 W3C entries green on the record, `make test` with parser
 and record as the only dependencies. **sparql's is next**, and its initiative
-does not exist yet. The handoff for it is `SHACL-T-0037`'s Status
+does not exist yet. *(Superseded 2026-08-25: **sparql's port is done** —
+`SPARQL-I-0003`, ten tasks. Both engines are on the record and
+odin-rdf-store has no consumers. The handoff below served its purpose and
+stands as the record of what it asked for.)* The handoff for it is `SHACL-T-0037`'s Status
 (`odin-rdf-shacl/.metis/initiatives/SHACL-I-0004/tasks/SHACL-T-0037.md`): what
 the port cost, the call-site patterns that worked, the record facts an engine
 must know (a candidate is the delta; `.Record` commits a violation; terms are not
@@ -407,7 +450,75 @@ encoding is frozen at first write; and **POSIX only** — Linux is the productio
 environment, darwin is development (F_FULLFSYNC with fsync fallback), and there is
 no Windows `File_Ops`; sync-primitive CI tests may be gated to Linux.
 
-### odin-rdf-sparql — `SPARQL-*` — parser and evaluation engine complete
+### odin-rdf-sparql — `SPARQL-*` — complete, on odin-rdf-record (v0.4.0)
+
+**Amended 2026-08-25 (`SPARQL-I-0003`): this engine was ported off odin-rdf-store onto
+odin-rdf-record, the second and last of the family's two ports.** The old section stands
+below as the record of the store era. What is true now:
+
+**One package**, `sparql`, importing `rdf` and `record` only, plus `sparql/srj` and
+`sparql/srx` for the two results serializations. **`sparql/kvstore` is deleted**, not
+re-pointed — and with it the parapoly `$MATCH`/`$NEXT`/`$DESTROY` binding, six
+backend-spanning procedure types, the harness `Backend` enum, the `store:` collection, and
+nine test files that existed only because there was an instantiation to test. **No
+`Term_ID` width matrix**: record's widths are fixed by design, so `make test` runs once,
+and all three CI runners run it, the suites opening every store over record's
+platform-free memory seam (`Mem_FS` + `mem_file_ops`). Pins: odin-rdf-parser `v0.1.0`,
+odin-rdf-record `v0.4.0` — `v0.4.0` was cut *for this port*, `RECORD-I-0004` building
+triple terms because the owner declined to let the port narrow a headline capability.
+
+**537 of 537 evaluated W3C entries across 38 enabled directories**, up from 512/37; 286
+tests in `make test`. The gain is triple-term evaluation restored, plus
+`sparql10-expr-builtin` enabled — which record's language-tag fold on intern made green
+without a line changing here.
+
+**The port moved cost, not behaviour, and it is measured** (`SPARQL-T-0036`). `bench/` was
+built *before* the port precisely so this could be checked (`SPARQL-T-0040`): **fourteen of
+its sixteen read-count pins reproduce against record to the integer**, along with all
+sixteen solution counts. The two that moved are both `GROUP BY`'s `load`, by the number of
+groups, because record *inlines* a small canonical integer that odin-rdf-store never
+interned — a term-identity difference behaving correctly. This is the second independent
+instance of a port's read counts surviving; odin-rdf-shacl's did too.
+
+**Three things a session working here should know:**
+
+- **`join_order` is no longer the identity permutation** (`SPARQL-T-0037`). `range_len`
+  is an exact O(1) candidate count, so a BGP is ordered **connected-first, then
+  cheapest, then as written**. Connectivity is not optional: this executor is a nested
+  loop, and a pattern sharing no variable with what is bound re-scans instead of probing,
+  so cost-only ordering makes plans arbitrarily *worse*. 12x fewer scans and 9.9x faster
+  on a badly-ordered three-pattern join; nothing else in the benchmark moved, every other
+  query having already been written in the order a planner would choose.
+- **The ordered read is unusable, and that is settled** (`SPARQL-T-0038`, closed as
+  evidence). record's ids are ordered but not in SPARQL's order — every dictionary id
+  sorts before every inlined one, and an integer past 2^27, any decimal, and any
+  non-canonical lexical form are each dictionary terms. No plan can establish when the two
+  orders agree, because SPARQL has no static types. `MIN`/`MAX` inherit it. Guarded by
+  `sparql/order_id_gap_test.odin`; **do not "optimize" `Plan_Order` on the grounds that
+  record's ids are ordered.**
+- **`GRAPH <g> { … }` is a scan here** (`RECORD-A-0004`: G is never a prefix), where
+  odin-rdf-store answered from a prefix range. 169,055 candidates to return 4,122 — the
+  whole store. Correctness is unaffected and it is the only benchmark case that got
+  slower.
+
+Both of the last two are filed on record's backlog as evidence — `RECORD-T-0026` and
+`RECORD-T-0027` — under the family's "capability gaps become evidence, not workarounds"
+convention. Neither is a request.
+
+**As-of costs this engine nothing, still**: `record.store_at(&db, epoch)` where the present
+uses `store_latest`, and no line of non-test source allows it — the same result the store
+era got (`SPARQL-T-0034`, `-T-0025`). **Triple terms are *cheaper* than they were**:
+`snapshot_triple_parts` reads a stored triple term's three component ids with no
+allocation, no decode and no recursion, against odin-rdf-store's two round trips.
+
+**Unreleased.** `v0.1.0` is the store-era engine and is still the only tag; whether the
+port warrants one is the owner's call.
+
+---
+
+*The section below is the store era, left standing as the record:*
+
+### odin-rdf-sparql — `SPARQL-*` — parser and evaluation engine complete (store era, superseded 2026-08-25)
 
 SPARQL 1.1 Query with the SPARQL 1.2 surface (triple terms, reified triples, annotations,
 VERSION): hand-written recursive-descent parser → AST → W3C algebra (§18.2/§18.4), plus an
@@ -531,7 +642,15 @@ Out of scope: SHACL Advanced Features (rules, functions), inference/entailment, 
   for offline, hermetic, reproducible runs. Not example programs.
 - **Consume the interface, don't bypass it.** Downstream projects touch storage only through
   the store's published match contract. Capability gaps become evidence-backed upstream
-  proposals, never backend-specific workarounds.
+  proposals, never backend-specific workarounds. *(Amended 2026-08-25: read
+  "odin-rdf-record's published read API". The **portability** half is gone — one store,
+  no goal of a second, both engines naming it directly — and the second sentence is what
+  actually does the work. The two ports tested it in both directions and it held: triple
+  terms were **asked for and built** (`RECORD-I-0004`, `v0.4.0` cut for a consumer),
+  record's untyped ids were **fixed** at shacl's asking (`v0.3.0`), and the two costs
+  sparql found and could not fix were **measured and filed** as `RECORD-T-0026` and
+  `RECORD-T-0027` rather than worked around. No special case was built in either
+  engine.)*
 - **Idiomatic Odin.** Explicit memory management, allocator awareness, straightforward
   procedural APIs, streaming over materialization.
 - **Zero-copy discipline.** Honor the borrowing/lifetime model of `RDF-A-0001`; interned
@@ -549,13 +668,21 @@ Out of scope: SHACL Advanced Features (rules, functions), inference/entailment, 
   `-collection:record=../odin-rdf-record` (shacl since 2026-08-20, in place of `store:`).
   Declared in each `Makefile` and mirrored in `ols.json`. Note that a collection resolves in
   the *importing* compilation: a project using the store or the record must also declare
-  `rdf:`, because their own sources import it.
-- **Dual-width testing.** `Term_ID` width is a build-time choice (`-define:RDF_STORE_TERM_ID_BITS`,
+  `rdf:`, because their own sources import it. *(Amended 2026-08-25: **`store:` is
+  declared by nothing** — sparql dropped it with `SPARQL-I-0003`, as shacl had. The two
+  collections anyone needs are `rdf:` and `record:`, and the resolves-in-the-importing-
+  compilation rule is why `rdf:` is still required alongside `record:`.)*
+- ~~**Dual-width testing.**~~ `Term_ID` width is a build-time choice (`-define:RDF_STORE_TERM_ID_BITS`,
   64-bit default, 32-bit opt-in). Anything width-sensitive is tested at both.
   (odin-rdf-record is exempt by design: its widths are fixed because the inline
   encoding is frozen at first write — see its section. odin-rdf-shacl is exempt since
   2026-08-20 for the same reason, being on the record; the convention now binds
-  odin-rdf-store and odin-rdf-sparql.)
+  odin-rdf-store and odin-rdf-sparql.) *(**Retired 2026-08-25**: odin-rdf-sparql became
+  exempt for the same reason at `SPARQL-T-0031`, so **this convention now binds only
+  odin-rdf-store, which has no consumers**. It was a real discipline for a year and it
+  is worth keeping the reason: the width was the store's build-time choice and its
+  consumers compiled the store's sources into their own binaries, so a width-sensitive
+  bug was a *consumer's* bug to find. Nothing compiles a store's sources any more.)*
 - **Deployment shape** driving the design: ~200 processes per physical machine, each embedding
   a store. CPU frugality is a first-order requirement.
 
@@ -581,6 +708,13 @@ make check   # vet every package at the default width
 make bench   # build and run benchmarks with release flags
 make clean   # remove build/
 ```
+
+*(Amended 2026-08-25: **odin-rdf-sparql joined shacl's shape** at `SPARQL-I-0003` — one
+`make test` run with no width matrix, `make check` ending with the same import-alias grep,
+and `make bench` two builds for the same reason, a read counter inside the timed binary
+being an instrument measuring itself. So the block above describes **odin-rdf-store
+alone**, which has no consumers. sparql also has `make build-bench`, which builds both
+benchmark binaries without running them.)*
 
 odin-rdf-record (Makefile-driven; no width matrix — its widths are fixed by design;
 `make test` requires python3 for the cross-implementation verifier):
