@@ -520,7 +520,7 @@ groups, because record *inlines* a small canonical integer that odin-rdf-store n
 interned — a term-identity difference behaving correctly. This is the second independent
 instance of a port's read counts surviving; odin-rdf-shacl's did too.
 
-**Three things a session working here should know:**
+**Four things a session working here should know:**
 
 - **`join_order` is no longer the identity permutation** (`SPARQL-T-0037`). `range_len`
   is an exact O(1) candidate count, so a BGP is ordered **connected-first, then
@@ -540,15 +540,27 @@ instance of a port's read counts surviving; odin-rdf-shacl's did too.
   that need the ids to mean something are dead.** `snapshot_match_as` is fine for anything
   needing a consistent total order — a merge join, clustering for `DISTINCT`/`GROUP BY` —
   and `SPARQL-T-0029` is reopened for exactly that. Keep the two apart: "ordered" and
-  "ordered the way SPARQL sorts" are different claims.)*
+  "ordered the way SPARQL sorts" are different claims. **Built the same evening:
+  `SPARQL-T-0029` shipped the merge join on `snapshot_match_as`, needing nothing new
+  from record — `bgp2` opens 2 scans where it opened 20,001 and runs 6.2x faster,
+  546/546 unchanged. Both halves of this bullet are now measured.)*
+- **A BGP's first join may be a merge, and the planner prices it** (`SPARQL-T-0029`).
+  Two cursors advanced in step over two named permutations replace one index probe per
+  row, but only where `MERGE_SCAN_PRICE` says the right side's window is worth reading
+  whole — a selective left side still probes, and `bench/`'s `bgp2-narrow-left` is the
+  case that pins the refusal. Two things not to re-derive: the merge is **only** at
+  depth 1, because a monotone right cursor requires a left side that never restarts;
+  and the price constant is **measured**, ~134 ns a scan open against ~6.7 ns a
+  candidate visit, where counting instructions suggests single digits and is wrong by
+  3x — a probe's binary searches are random access, a merge's walk is sequential.
 - **`GRAPH <g> { … }` is a scan here** (`RECORD-A-0004`: G is never a prefix), where
   odin-rdf-store answered from a prefix range. 169,055 candidates to return 4,122 — the
   whole store. Correctness is unaffected and it is the only benchmark case that got
   slower.
 
-Both of the last two are filed on record's backlog as evidence — `RECORD-T-0026` and
-`RECORD-T-0027` — under the family's "capability gaps become evidence, not workarounds"
-convention. Neither is a request.
+The ordered-read and `GRAPH` findings are filed on record's backlog as evidence —
+`RECORD-T-0027` and `RECORD-T-0026` — under the family's "capability gaps become
+evidence, not workarounds" convention. Neither is a request.
 
 **As-of costs this engine nothing, still**: `record.store_at(&db, epoch)` where the present
 uses `store_latest`, and no line of non-test source allows it — the same result the store
