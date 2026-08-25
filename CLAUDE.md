@@ -489,13 +489,18 @@ instance of a port's read counts surviving; odin-rdf-shacl's did too.
   so cost-only ordering makes plans arbitrarily *worse*. 12x fewer scans and 9.9x faster
   on a badly-ordered three-pattern join; nothing else in the benchmark moved, every other
   query having already been written in the order a planner would choose.
-- **The ordered read is unusable, and that is settled** (`SPARQL-T-0038`, closed as
-  evidence). record's ids are ordered but not in SPARQL's order — every dictionary id
-  sorts before every inlined one, and an integer past 2^27, any decimal, and any
-  non-canonical lexical form are each dictionary terms. No plan can establish when the two
-  orders agree, because SPARQL has no static types. `MIN`/`MAX` inherit it. Guarded by
+- **The ordered read cannot answer `ORDER BY`, and that is settled** (`SPARQL-T-0038`,
+  closed as evidence). record's ids are ordered but not in SPARQL's order — every
+  dictionary id sorts before every inlined one, and an integer past 2^27, any decimal, and
+  any non-canonical lexical form are each dictionary terms. No plan can establish when the
+  two orders agree, because SPARQL has no static types. `MIN`/`MAX` inherit it. Guarded by
   `sparql/order_id_gap_test.odin`; **do not "optimize" `Plan_Order` on the grounds that
-  record's ids are ordered.**
+  record's ids are ordered.** *(Scoped 2026-08-25: this read "the ordered read is
+  unusable", which was too broad and got `SPARQL-T-0029` wrongly closed. **Only the uses
+  that need the ids to mean something are dead.** `snapshot_match_as` is fine for anything
+  needing a consistent total order — a merge join, clustering for `DISTINCT`/`GROUP BY` —
+  and `SPARQL-T-0029` is reopened for exactly that. Keep the two apart: "ordered" and
+  "ordered the way SPARQL sorts" are different claims.)*
 - **`GRAPH <g> { … }` is a scan here** (`RECORD-A-0004`: G is never a prefix), where
   odin-rdf-store answered from a prefix range. 169,055 candidates to return 4,122 — the
   whole store. Correctness is unaffected and it is the only benchmark case that got
