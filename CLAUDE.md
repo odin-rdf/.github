@@ -174,7 +174,7 @@ task at all.
 two introspection procedures — with both consumers pinned to `v0.5.0`. Nothing schedules the
 v0.6.0 that would let either sibling consume any of them.
 
-### odin-rdf-record — `RECORD-*` — log, resident store and write path complete (format v1)
+### odin-rdf-record — `RECORD-*` — log, resident store and write path complete (format v2)
 
 A tamper-evident **system of record**: an append-only, hash-chained, segmented log
 is the only durable representation, replayed on every start into a memory-resident
@@ -285,6 +285,38 @@ seams, a crash sweep across `apply`, both verifiers over apply-written logs, a
 reader/writer torture under the memory checker, and the W3C suites through
 `ingest` by reference.
 
+**Amended 2026-08-25 — `RECORD-I-0004`, RDF 1.2's two term kinds, and the first
+time this format has moved.** `v0.4.0` is tagged. The reservation
+`architecture.md` §11.3 made — tag `0x07`, "the only decision needed today is
+whether to reserve the tag byte" — was spent: **triple terms** encode as
+`0x07 | sID | pID | oID`, permitted in every position, with the intern and the
+decoder recursing and §5.2's ordering rule now transitive and enforced on both
+the write and the replay path (`Load_Error.Term_Order`). **Base-direction
+literals** got tag `0x08`, which had no reservation ([[RECORD-A-0007]]), and an
+empty language with a direction is still not a term. **Format version 2 does not
+read version 1 and there is no migration** — the format's standing rule, and
+there are no deployments. Two ADRs carry the design: `RECORD-A-0007` (the version
+bump) and `RECORD-A-0008` (how a recursive term is decoded, and who owns it).
+
+The initiative was filed *by* a consumer: odin-rdf-sparql's port
+(`SPARQL-I-0003`) was gated on it rather than allowed to narrow a headline
+capability of that engine — 38 evaluated W3C entries in
+`sparql12-eval-triple-terms` would have gone dark. This is not the family stance
+weakening. It is the other thing the stance allowed for: a capability this
+store's own architecture named, costed and left unbuilt until a consumer needed
+it, and the encoding built is the one specified before sparql asked. What a
+consumer sees: `Term_Kind` gains **`.Triple`** (an exhaustive `switch` on it is a
+compile error until it is handled — which is how odin-rdf-shacl found out);
+**`snapshot_triple_parts`** reads a triple term's three component ids with no
+allocation, no decode and no recursion, so taking one apart is *cheaper* here
+than in odin-rdf-store, where it cost two round trips (`SPARQL-T-0019`); and
+**`snapshot_term` can return a term it owns** — a triple term wholly, a split IRI
+its joined string — paired with the new **`snapshot_term_destroy`**, which is a
+no-op for the borrowing kinds. Proven against the W3C rdf12 eval suites end to
+end (29 turtle, 25 trig documents, every one carrying a triple term), with both
+verifiers still agreeing over the fault corpus — the Python one needed one
+constant changed, for the header's sake and not the encoding's.
+
 **What moves next is on the siblings' side**: the odin-rdf-shacl port
 initiative (unblocked), then odin-rdf-sparql's. *(Superseded 2026-08-20, evening:
 shacl's port is done — see below.)* What they need from here —
@@ -305,11 +337,14 @@ does not exist yet. The handoff for it is `SHACL-T-0037`'s Status
 the port cost, the call-site patterns that worked, the record facts an engine
 must know (a candidate is the delta; `.Record` commits a violation; terms are not
 epoch-scoped; language tags fold on intern; non-canonical numerics are distinct
-terms; inlineable literals always resolve; triple terms are refused), and the
+terms; inlineable literals always resolve; triple terms are refused — *amended
+2026-08-25: they are stored, `RECORD-I-0004`*), and the
 note that shacl's no-dual-backend and one-and-only-store decisions were made
 for shacl — sparql asks the owner, not assumes. The bullets below stand as the
 record and are still accurate, with one correction: pin `v0.3.0` or later, not
-`v0.1.0`.)*
+`v0.1.0`. **Amended 2026-08-25: `v0.4.0` or later** — a sparql port needs triple
+terms, and a shacl-shaped engine needs the two API changes that came with
+them.)*
 The seven-point API mapping and the CI list are in `RECORD-I-0003`'s Status
 (`odin-rdf-record/.metis/initiatives/RECORD-I-0003/initiative.md`); what is *not*
 there:
@@ -337,6 +372,9 @@ there:
   against `https://w3c.github.io/rdf-tests/rdf/rdf11/rdf-turtle/`). Triple terms
   (20 of sparql's vendored data files) are refused by `apply` with
   `.Unsupported_Term` at the op — a recorded backend limit on sparql's side.
+  *(Amended 2026-08-25: not any more. `RECORD-I-0004` built them and `v0.4.0` was
+  cut for that port; those 20 files load. The limit that remains is the empty
+  one: a base direction with no language, which is not an RDF 1.2 term either.)*
 - **Term identity differs from odin-rdf-store in two places that affect SPARQL
   value semantics:** language tags are lowercased on intern (`"x"@EN` and
   `"x"@en` are one term — the canonical encoding's rule), and a non-canonical
@@ -348,7 +386,11 @@ there:
   origin must be stated; `range_iter`/`scan_next` stream fact ids, `snapshot_fact`
   reads one; `snapshot_kind` replaces `id_kind`; `snapshot_epoch_meta` carries
   actor/reason/wall; a `Snapshot` is acquire/use/release and a `Validator`'s
-  candidate snapshot must not be retained. The consumer id range for the
+  candidate snapshot must not be retained. *(Amended 2026-08-25, `v0.4.0`:
+  `snapshot_kind` has a fourth answer, `.Triple`, and panics on a tag it does not
+  define rather than guessing `.Literal`; `snapshot_triple_parts` takes a triple
+  term apart into three ids without decoding it; and `snapshot_term` is no longer
+  always-borrowing — pair every decode with `snapshot_term_destroy`.)* The consumer id range for the
   engines' own values is `CONSUMER_ID_FIRST ..= CONSUMER_ID_LAST`.
 - **Process.** The Metis MCP reports "no active workspace" when the session's
   working directory is this family root; work on a repo from inside it (or edit
@@ -398,6 +440,20 @@ paths, the constraint catalogue, `sh:ValidationReport` building, and the `Valida
 binding. Dependencies: odin-rdf-parser `v0.1.1`, odin-rdf-record `v0.3.0` as a floor. No
 LMDB, no native code, no width matrix; the suites open every store over the record's
 platform-free memory seam, so all three CI runners run the same `make test`.
+*(Amended 2026-08-25, `SHACL-T-0038`: the record floor is **`v0.4.0`**. This
+engine needs neither of RDF 1.2's term kinds and adopted the release for the two
+things their arrival changed — `record.Term_Kind` gained `.Triple`, which
+`node_kind_of` switches on exhaustively (the port's one compile error, and the
+right one), and `snapshot_term` can now return a term it owns, so
+`session_term_destroy` is paired with every decode. That pairing also closed the
+split-IRI leak `session_term`'s contract had admitted since the port and had no
+verb to fix. **A triple term is an ordinary value node here**: counted, reported,
+rendered into `sh:value` — and it satisfies no `sh:nodeKind`, since SHACL 1.0's
+six kinds do not name a fourth. `shacl/rdf12_term_test.odin` is where that lives,
+because the vendored corpus has none and never will. 98/98 unchanged, every read
+pin unmoved (7503 on the reference configuration), which is what a pin bump for a
+*type* rather than a capability should look like. No new shacl tag: `v0.2.0` is
+still the release, and whether this warrants one is the owner's call.)*
 
 **It was ported on 2026-08-20 (`SHACL-I-0004`, seven tasks, one day)** from odin-rdf-store,
 against which it was written backend-independent with a `shacl/kvstore` instantiation, a
