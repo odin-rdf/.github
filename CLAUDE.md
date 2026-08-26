@@ -409,7 +409,11 @@ moves). Filed beside it from the same design: `RECORD-T-0028` (a seventh order,
 +12 ms on the sort, +5 ms mean per commit. Both engines call `snapshot_match`,
 so at whatever pin includes it their graph-bound patterns become prefix reads
 with no source change — sparql's `GRAPH <g>` case, `RECORD-T-0026`'s 169,055
-candidates for 4,122 answers, becomes 4,122 for 4,122. No tag yet.)*
+candidates for 4,122 answers, becomes 4,122 for 4,122. No tag yet.)* *(**Tagged
+`v0.6.0` the same day and walked** — `SPARQL-T-0046`, `SHACL-T-0041`: no source change
+in either engine; sparql's bench re-pinned, the `graph` case at 4,122 candidates for
+4,122 answers at both sizes and three other cases each narrower by exactly the named
+graph's 500 facts, every solution count identical.)*
 One thing to know before adopting: an unstated `Filter` reached from a spawned
 thread hangs a test runner rather than failing it — grep `origin = .` without
 `scope` first.
@@ -510,7 +514,7 @@ encoding is frozen at first write; and **POSIX only** — Linux is the productio
 environment, darwin is development (F_FULLFSYNC with fsync fallback), and there is
 no Windows `File_Ops`; sync-primitive CI tests may be gated to Linux.
 
-### odin-rdf-sparql — `SPARQL-*` — complete, on odin-rdf-record (v0.5.0)
+### odin-rdf-sparql — `SPARQL-*` — complete, on odin-rdf-record (v0.6.0)
 
 **Amended 2026-08-25 (`SPARQL-I-0003`): this engine was ported off odin-rdf-store onto
 odin-rdf-record, the second and last of the family's two ports.** The old section stands
@@ -525,7 +529,7 @@ nine test files that existed only because there was an instantiation to test. **
 and all three CI runners run it, the suites opening every store over record's
 platform-free memory seam (`Mem_FS` + `mem_file_ops`). Pins: odin-rdf-parser `v0.1.2`
 *(`v0.1.0` until later the same day, when `RDF-T-0026` landed — the first parser bump this
-engine has ever needed, and it filed the bug)*, odin-rdf-record `v0.4.0` *(→ `v0.5.0` on 2026-08-27, `SPARQL-T-0045`)* — `v0.4.0` was cut *for this port*, `RECORD-I-0004` building
+engine has ever needed, and it filed the bug)*, odin-rdf-record `v0.4.0` *(→ `v0.5.0` on 2026-08-27, `SPARQL-T-0045`; → `v0.6.0` the same day, `SPARQL-T-0046`)* — `v0.4.0` was cut *for this port*, `RECORD-I-0004` building
 triple terms because the owner declined to let the port narrow a headline capability.
 
 **537 of 537 evaluated W3C entries across 38 enabled directories**, up from 512/37; 286
@@ -587,7 +591,9 @@ instance of a port's read counts surviving; odin-rdf-shacl's did too.
   odin-rdf-store answered from a prefix range. 169,055 candidates to return 4,122 — the
   whole store. Correctness is unaffected and it is the only benchmark case that got
   slower. *(Amended 2026-08-27: answered on record's `main` by `RECORD-T-0028`'s
-  `GPOS` order — a prefix at whatever pin includes it, with no change here.)*
+  `GPOS` order — a prefix at whatever pin includes it, with no change here.)* *(Pinned
+  the same day, `v0.6.0`, `SPARQL-T-0046`: 4,122 candidates for 4,122 answers at both
+  sizes, measured by `make bench` and re-pinned.)*
 
 The ordered-read and `GRAPH` findings are filed on record's backlog as evidence —
 `RECORD-T-0027` and `RECORD-T-0026` — under the family's "capability gaps become
@@ -657,7 +663,7 @@ paths, the constraint catalogue, `sh:ValidationReport` building, and the `Valida
 binding. Dependencies: odin-rdf-parser `v0.1.1`, odin-rdf-record `v0.3.0` as a floor. No
 LMDB, no native code, no width matrix; the suites open every store over the record's
 platform-free memory seam, so all three CI runners run the same `make test`.
-*(Amended 2026-08-27, `SHACL-T-0040`: **`v0.5.0`** — `Filter.scope`, seven sites state `.All`, nothing else moves.)* *(Amended 2026-08-25, `SHACL-T-0038`: the record floor is **`v0.4.0`**. This
+*(Amended 2026-08-27, `SHACL-T-0040`: **`v0.5.0`** — `Filter.scope`, seven sites state `.All`, nothing else moves.)* *(And **`v0.6.0`** the same day, `SHACL-T-0041`: record's `GPOS` order — every graph-bound session read is a prefix, no source change.)* *(Amended 2026-08-25, `SHACL-T-0038`: the record floor is **`v0.4.0`**. This
 engine needs neither of RDF 1.2's term kinds and adopted the release for the two
 things their arrival changed — `record.Term_Kind` gained `.Triple`, which
 `node_kind_of` switches on exhaustively (the port's one compile error, and the
