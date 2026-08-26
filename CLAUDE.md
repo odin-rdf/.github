@@ -413,7 +413,7 @@ candidates for 4,122 answers, becomes 4,122 for 4,122. No tag yet.)* *(**Tagged
 `v0.6.0` the same day and walked** — `SPARQL-T-0046`, `SHACL-T-0041`: no source change
 in either engine; sparql's bench re-pinned, the `graph` case at 4,122 candidates for
 4,122 answers at both sizes and three other cases each narrower by exactly the named
-graph's 500 facts, every solution count identical.)*
+graph's 500 facts, every solution count identical.)* *(`SPARQL-T-0044` is **built** the same day — see the sparql section; `SHACL-T-0039` is the one filing left.)*
 One thing to know before adopting: an unstated `Filter` reached from a spawned
 thread hangs a test runner rather than failing it — grep `origin = .` without
 `scope` first.
@@ -594,6 +594,15 @@ instance of a port's read counts surviving; odin-rdf-shacl's did too.
   `GPOS` order — a prefix at whatever pin includes it, with no change here.)* *(Pinned
   the same day, `v0.6.0`, `SPARQL-T-0046`: 4,122 candidates for 4,122 answers at both
   sizes, measured by `make bench` and re-pinned.)*
+- **`query_init` takes the application's graph set** (`SPARQL-T-0044`, 2026-08-27):
+  `scope := record.Graph_Scope.All` and `graphs: []record.Term_ID = nil`, resident ids
+  resolved against the same snapshot with misses dropped, copied into the query. Every
+  read carries them as `Exec.filter` — record's `Filter`, applied per fact inside
+  `scan_next`, below every operator — so the set is an authorization ceiling the query
+  text cannot widen: `GRAPH <x>` outside it yields nothing, `GRAPH ?g` ranges over the
+  set's named graphs, an empty `.Set` yields no solutions, `.All` is unchanged
+  behaviour. Dataset clauses are still `SPARQL-T-0043`'s and will intersect it. Note for
+  callers: `query_init`'s trailing parameters are positional — name `allocator`.
 
 The ordered-read and `GRAPH` findings are filed on record's backlog as evidence —
 `RECORD-T-0027` and `RECORD-T-0026` — under the family's "capability gaps become
