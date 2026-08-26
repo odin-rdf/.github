@@ -413,7 +413,7 @@ candidates for 4,122 answers, becomes 4,122 for 4,122. No tag yet.)* *(**Tagged
 `v0.6.0` the same day and walked** — `SPARQL-T-0046`, `SHACL-T-0041`: no source change
 in either engine; sparql's bench re-pinned, the `graph` case at 4,122 candidates for
 4,122 answers at both sizes and three other cases each narrower by exactly the named
-graph's 500 facts, every solution count identical.)* *(`SPARQL-T-0044` is **built** the same day — see the sparql section; `SHACL-T-0039` is the one filing left.)*
+graph's 500 facts, every solution count identical.)* *(`SPARQL-T-0044` and `SHACL-T-0039` are both **built** the same day — see the engines' sections. All four of the design's filings are built; two are released.)*
 One thing to know before adopting: an unstated `Filter` reached from a spawned
 thread hangs a test runner rather than failing it — grep `origin = .` without
 `scope` first.
@@ -742,7 +742,13 @@ Four contracts to know before extending it:
   Validation reads one caller-named graph and cannot express a union, so a shape saying
   `sh:class ex:Asset` will not see that `ex:ResourceAsset rdfs:subClassOf ex:Asset` unless
   that triple is in the graph being validated. It is the most common way a shapes graph
-  silently under-reports, and `sh:targetClass` walks the same closure.
+  silently under-reports, and `sh:targetClass` walks the same closure. *(Amended 2026-08-27, `SHACL-T-0039`: **a session may now read the
+  union of a set of graphs** — `session_init_union`, `validator_init_union` —
+  `SHACL-A-0001` decision 5 generalised on its own review trigger for the workspace
+  design; the single graph is the one-element case, every read pin holds (7503), and
+  the answer to this bullet is to put the ontology's graph in the set. Found on the
+  way: the compiler's `reader_match` in `shacl/query.odin` had been writing its own
+  pattern and filter since the port; it reads through the session's filter now.)*
 
 Remaining: SHACL-SPARQL (`sh:sparql` and SPARQL-based constraint components), the only thing
 that would add odin-rdf-sparql as a dependency — the Makefile notes where the `sparql:`
