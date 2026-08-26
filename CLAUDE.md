@@ -403,6 +403,13 @@ day (`SPARQL-T-0045`, `SHACL-T-0040`: ten sites state `.All`, nothing else
 moves). Filed beside it from the same design: `RECORD-T-0028` (a seventh order,
 `GPOS`, so "which Risks are in this workspace" is a prefix), `SPARQL-T-0044`
 (the graph set on `query_init`) and `SHACL-T-0039` (validating a set's union).
+*(`RECORD-T-0028` is **built** as of 2026-08-27, on `main` and unreleased:
+`Order.GPOS`, chosen when G is bound, S is not, and O is not bound without P;
+`RECORD-A-0004` amended on its own review trigger; +1.6 MB at 4×10⁵ facts,
++12 ms on the sort, +5 ms mean per commit. Both engines call `snapshot_match`,
+so at whatever pin includes it their graph-bound patterns become prefix reads
+with no source change — sparql's `GRAPH <g>` case, `RECORD-T-0026`'s 169,055
+candidates for 4,122 answers, becomes 4,122 for 4,122. No tag yet.)*
 One thing to know before adopting: an unstated `Filter` reached from a spawned
 thread hangs a test runner rather than failing it — grep `origin = .` without
 `scope` first.
@@ -579,7 +586,8 @@ instance of a port's read counts surviving; odin-rdf-shacl's did too.
 - **`GRAPH <g> { … }` is a scan here** (`RECORD-A-0004`: G is never a prefix), where
   odin-rdf-store answered from a prefix range. 169,055 candidates to return 4,122 — the
   whole store. Correctness is unaffected and it is the only benchmark case that got
-  slower.
+  slower. *(Amended 2026-08-27: answered on record's `main` by `RECORD-T-0028`'s
+  `GPOS` order — a prefix at whatever pin includes it, with no change here.)*
 
 The ordered-read and `GRAPH` findings are filed on record's backlog as evidence —
 `RECORD-T-0027` and `RECORD-T-0026` — under the family's "capability gaps become
