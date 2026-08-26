@@ -387,6 +387,26 @@ end (29 turtle, 25 trig documents, every one carrying a triple term), with both
 verifiers still agreeing over the fault corpus — the Python one needed one
 constant changed, for the header's sake and not the encoding's.
 
+**Amended 2026-08-27 — `v0.5.0`, `RECORD-T-0029`: graph scope is stated.** The
+first release cut for the *application* rather than an engine. Its workspace
+design (2026-08-26; a named graph per workspace, `W` and `W/private` as
+audiences, a read scope computed per request as a graph set that is an
+authorization ceiling) was the first consumer to design a *computed*
+`Filter.graphs` — and `Filter.graphs` decided scoped-versus-unscoped by whether
+the slice was nil, which Odin makes a fact about allocation history: a
+zero-value dynamic array's slice is nil, one made with a capacity hint is not,
+so the same empty set read the whole store or nothing. `Filter` now carries
+`scope: Graph_Scope { All, Set }` beside `origin`, under `origin`'s rule — no
+valid zero, refused by `range_iter` at the first read; under `.Set` the length
+alone decides. An API change, not a format change; both engines walked the same
+day (`SPARQL-T-0045`, `SHACL-T-0040`: ten sites state `.All`, nothing else
+moves). Filed beside it from the same design: `RECORD-T-0028` (a seventh order,
+`GPOS`, so "which Risks are in this workspace" is a prefix), `SPARQL-T-0044`
+(the graph set on `query_init`) and `SHACL-T-0039` (validating a set's union).
+One thing to know before adopting: an unstated `Filter` reached from a spawned
+thread hangs a test runner rather than failing it — grep `origin = .` without
+`scope` first.
+
 **What moves next is on the siblings' side**: the odin-rdf-shacl port
 initiative (unblocked), then odin-rdf-sparql's. *(Both done as of
 2026-08-25 — shacl 2026-08-20, sparql `SPARQL-I-0003`. odin-rdf-record's
@@ -458,7 +478,8 @@ there:
   engine's job.
 - **The read side in one breath.** Ids are `u32`; `0` is unbound in a `Pattern`,
   `MATCH_DEFAULT_GRAPH` binds the default graph in G; `Filter{origin = .Any}` —
-  origin must be stated; `range_iter`/`scan_next` stream fact ids, `snapshot_fact`
+  origin must be stated *(and `scope = .All` since `v0.5.0`, `RECORD-T-0029`: an
+  unstated scope is refused at the first read, and an empty `.Set` admits nothing)*; `range_iter`/`scan_next` stream fact ids, `snapshot_fact`
   reads one; `snapshot_kind` replaces `id_kind`; `snapshot_epoch_meta` carries
   actor/reason/wall; a `Snapshot` is acquire/use/release and a `Validator`'s
   candidate snapshot must not be retained. *(Amended 2026-08-25, `v0.4.0`:
@@ -482,7 +503,7 @@ encoding is frozen at first write; and **POSIX only** — Linux is the productio
 environment, darwin is development (F_FULLFSYNC with fsync fallback), and there is
 no Windows `File_Ops`; sync-primitive CI tests may be gated to Linux.
 
-### odin-rdf-sparql — `SPARQL-*` — complete, on odin-rdf-record (v0.4.0)
+### odin-rdf-sparql — `SPARQL-*` — complete, on odin-rdf-record (v0.5.0)
 
 **Amended 2026-08-25 (`SPARQL-I-0003`): this engine was ported off odin-rdf-store onto
 odin-rdf-record, the second and last of the family's two ports.** The old section stands
@@ -497,7 +518,7 @@ nine test files that existed only because there was an instantiation to test. **
 and all three CI runners run it, the suites opening every store over record's
 platform-free memory seam (`Mem_FS` + `mem_file_ops`). Pins: odin-rdf-parser `v0.1.2`
 *(`v0.1.0` until later the same day, when `RDF-T-0026` landed — the first parser bump this
-engine has ever needed, and it filed the bug)*, odin-rdf-record `v0.4.0` — `v0.4.0` was cut *for this port*, `RECORD-I-0004` building
+engine has ever needed, and it filed the bug)*, odin-rdf-record `v0.4.0` *(→ `v0.5.0` on 2026-08-27, `SPARQL-T-0045`)* — `v0.4.0` was cut *for this port*, `RECORD-I-0004` building
 triple terms because the owner declined to let the port narrow a headline capability.
 
 **537 of 537 evaluated W3C entries across 38 enabled directories**, up from 512/37; 286
@@ -628,7 +649,7 @@ paths, the constraint catalogue, `sh:ValidationReport` building, and the `Valida
 binding. Dependencies: odin-rdf-parser `v0.1.1`, odin-rdf-record `v0.3.0` as a floor. No
 LMDB, no native code, no width matrix; the suites open every store over the record's
 platform-free memory seam, so all three CI runners run the same `make test`.
-*(Amended 2026-08-25, `SHACL-T-0038`: the record floor is **`v0.4.0`**. This
+*(Amended 2026-08-27, `SHACL-T-0040`: **`v0.5.0`** — `Filter.scope`, seven sites state `.All`, nothing else moves.)* *(Amended 2026-08-25, `SHACL-T-0038`: the record floor is **`v0.4.0`**. This
 engine needs neither of RDF 1.2's term kinds and adopted the release for the two
 things their arrival changed — `record.Term_Kind` gained `.Triple`, which
 `node_kind_of` switches on exhaustively (the port's one compile error, and the
