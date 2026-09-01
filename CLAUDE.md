@@ -557,6 +557,40 @@ there:
   odin-rdf-parser: on an unterminated long string the scanner error's `column`
   comes out negative while `offset` and `line` are right (RECORD-T-0017).
 
+**Where a test goes (2026-09-01, `RECORD-T-0034`).** Most of this repository's
+tests are **in-package**, `record/*_test.odin`, and that is the default for
+anything new. The reason is not taste: `@(private)` in Odin is *package*-scoped,
+so a suite in its own package can only reach exported names, and four of them
+were holding 43 internal names public — which is what `RECORD-I-0007` was
+closing. `record/*_test.odin` keeps full access to everything private.
+
+Two suites stay outside, under `tests/`, and both for the same hard reason:
+`tests/ingest` and `tests/readme` import `record/ingest`, which imports
+`record`, so in-package they would be an import cycle. Neither holds an internal
+name — `tests/ingest` was ported onto `snapshot_fact`, `snapshot_bytes` and
+`snapshot_terms` to get there, which is what a suite outside the package should
+be asking anyway. `tests/verify/` is not an Odin package at all; it is the
+independent Python verifier. `tests/api/api_surface.py` is the surface tool
+`make api` runs.
+
+Three things to know before adding one:
+
+- **`_test.odin` is a naming convention in Odin, not a build tag.** Those files
+  are part of package `record` for every consumer that compiles it. An
+  in-package test that touches `posix_file_ops` therefore makes the *package*
+  POSIX-only, which is how `RECORD-A-0011` came about — `record/proof_test.odin`,
+  `scale_test.odin` and `tool_test.odin` do exactly that, deliberately and
+  untagged, and Windows was dropped rather than tagged around.
+- **The scale measurement is guarded**, `when #config(RECORD_SCALE, false)`, so
+  the ordinary run does not execute a wall-clock budget in a debug build.
+  `make test` runs a second, optimized pass for it. Only the `@(test)`
+  procedures are guarded and not the helpers: an `import` is a syntax error
+  inside a `when` block and an unused import is a compile error, while an unused
+  procedure is neither.
+- **Helpers are `@(private = "file")`**, the house convention, which is also
+  what lets `WALL`, `append_framed`, `splitmix` and `BIN` exist in several test
+  files at once.
+
 Two deliberate departures from family conventions, both recorded in the repo:
 **no `Term_ID` width matrix** — both widths are fixed by design because the inline
 encoding is frozen at first write; and **POSIX only** — Linux is the production
@@ -925,7 +959,6 @@ make clean   # remove build/
 *(Amended 2026-09-01, `RECORD-I-0005`/`-I-0007`, tag `v0.7.0`: `make check` ends in
 `make api`, and `make test` is two passes — the ordinary one, then the scale
 measurement again with `-define:RECORD_SCALE=true -o:speed`. The proof, scale and tool
-suites are `record/*_test.odin` now rather than packages under `tests/`, because
-`@(private)` is package-scoped and a suite outside the package held 43 names public.
-`tests/ingest` and `tests/readme` stay outside — they import `record/ingest`, which
-imports `record`.)*
+suites are `record/*_test.odin` now rather than packages under `tests/`; see **Where a
+test goes** in this repository's section above for the layout and the three rules that
+come with it.)*
