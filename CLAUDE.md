@@ -86,7 +86,8 @@ Out of scope: RDF/XML, JSON-LD, N3 — and everything downstream.
 literal reported the EOF line and a negative column (the literal's own newlines had moved
 the line start past the opener); it now reports the opener. Found by odin-rdf-record's
 W3C sweep (RECORD-T-0017), unseeable by any vendored suite. odin-rdf-shacl pins it, and is
-the only consumer with a pin to move: odin-rdf-record has no CI yet and builds against the
+the only consumer with a pin to move: odin-rdf-record has no CI yet *(it does since
+2026-09-01, pinning `v0.1.2`)* and builds against the
 parser's `main` locally; odin-rdf-sparql is left alone by decision until it has been ported
 to odin-rdf-record; odin-rdf-store is on its way out and is not touched. **odin-rdf-sparql's own query scanner has a line-for-line copy of the
 defect** (`sparql/scanner.odin`, `scan_long_string`), and odin-rdf-app prints that
@@ -121,6 +122,10 @@ moved**: `record/ingest` loads through this parser and the log is the durable
 representation, so below `v0.1.2` a system of record can log an IRI its source document
 did not contain — faithfully, tamper-evidently, and wrongly. It has no CI and builds
 against the parser's `main` locally, so it has the fix and no pin to state.
+*(Amended 2026-09-01: **it has moved, and it has CI.** odin-rdf-record's first
+workflow pins `odin-rdf-parser@v0.1.2` for exactly the reason above — the family's
+last repository to get CI, on ubuntu and macos, two runners and not three because it
+is POSIX only by design. Every repository here now states a parser pin.)*
 odin-rdf-shacl loads shapes through the parser too and pins `v0.1.1`; odin-rdf-store is
 not touched.
 
@@ -417,6 +422,50 @@ graph's 500 facts, every solution count identical.)* *(`SPARQL-T-0044` and `SHAC
 One thing to know before adopting: an unstated `Filter` reached from a spawned
 thread hangs a test runner rather than failing it — grep `origin = .` without
 `scope` first.
+
+**Amended 2026-09-01 — `v0.7.0`, `RECORD-I-0005` and `RECORD-I-0007`: the
+exported surface is a decision, and it is 73 names where it was 195.** Odin
+exports every top-level declaration not marked `@(private)`, so what this
+package offered was a residue of what its own code needed to share with `tool/`,
+with the `tests/*` suites, and with itself — 65 of the 195 were the API, and
+typing `record.` listed all 195. **`doc/api-surface.txt` now states the surface
+normatively and `make api` holds it**, running inside `make check` on every
+runner: a name that quietly stops being `@(private)` fails the build.
+
+The set was computed rather than grepped, and in both directions: 18 names are
+reached only by inference and appear in no consumer's source (a consumer writes
+`r := snapshot_match(...)` and never names `Range`), while three documented read
+verbs — `snapshot_bytes`, `snapshot_visible`, `snapshot_derived` — had to be
+**promoted back** after being marked private for want of a caller. Under-
+exporting is as wrong as over-exporting.
+
+Two structural changes came with it, because `@(private)` is package-scoped.
+**The proof, scale and tool suites moved into the package** as
+`record/*_test.odin` — a suite outside it had been holding 43 names public — and
+the scale measurement keeps its optimized run behind
+`when #config(RECORD_SCALE, false)` plus a second `make test` pass.
+**`log_read` is new and public**: the decoded counterpart to `replay`, owning
+the dictionary and the term resolution and handing a consumer `rdf.Quad`s valid
+for the callback's duration. It exists because `tool/` had been reassembling the
+format by hand, which is what kept 13 format internals exported; `replay` and
+`Consumer` are private with them. Writing that loop once surfaced two defects,
+both now pinned: a commit record carries its term definitions *after* the header
+naming the attribution (so resolving there reads an id the dictionary does not
+yet hold), and the CLI passed no `resolve_term` to `term_decode`, so **`record
+dump` could not read a triple term** — any log written since `v0.4.0`.
+
+**Not a format change**: the log, the encoding and both verifiers are untouched,
+and a `v0.6.0` store reads and writes identically. Both engines compile with no
+source change and were walked the same day (`SHACL-T-0042`, `SPARQL-T-0047`) —
+122 names stopped being exported and neither engine named one of them, which is
+the strongest test the "consume the interface, don't bypass it" convention has
+had. Two near-misses worth knowing: `DEFAULT_GRAPH` (the log's sentinel) is
+private now while `MATCH_DEFAULT_GRAPH` (a `Pattern`'s G binding) is API; and
+`dict_bytes`/`store_fact` are gone in favour of `snapshot_bytes`/`snapshot_fact`,
+which the record's own out-of-package suite had been bypassing until this work.
+`RECORD-A-0009` decided to move the format layer into a `record/log` subpackage
+and `RECORD-A-0010` superseded it the same day — the split would have forced 38
+private symbols public and taken the total exported from 121 to 161.
 
 **What moves next is on the siblings' side**: the odin-rdf-shacl port
 initiative (unblocked), then odin-rdf-sparql's. *(Both done as of
@@ -846,11 +895,21 @@ alone**, which has no consumers. sparql also has `make build-bench`, which build
 benchmark binaries without running them.)*
 
 odin-rdf-record (Makefile-driven; no width matrix — its widths are fixed by design;
-`make test` requires python3 for the cross-implementation verifier):
+`make test` requires python3 for the cross-implementation verifier, and since
+2026-09-01 `make check` needs it too — the surface check is Python):
 
 ```
-make test    # the test suite, the fault corpus, and the scale measurement
-make check   # vet every package with -vet -strict-style
+make test    # the suite, the fault corpus, then the scale measurement optimized
+make check   # vet every package with -vet -strict-style, then `make api`
+make api     # diff the exported surface against doc/api-surface.txt
 make tool    # build the record CLI (verify, dump, head) into build/record
 make clean   # remove build/
 ```
+
+*(Amended 2026-09-01, `RECORD-I-0005`/`-I-0007`, tag `v0.7.0`: `make check` ends in
+`make api`, and `make test` is two passes — the ordinary one, then the scale
+measurement again with `-define:RECORD_SCALE=true -o:speed`. The proof, scale and tool
+suites are `record/*_test.odin` now rather than packages under `tests/`, because
+`@(private)` is package-scoped and a suite outside the package held 43 names public.
+`tests/ingest` and `tests/readme` stay outside — they import `record/ingest`, which
+imports `record`.)*
