@@ -563,6 +563,22 @@ encoding is frozen at first write; and **POSIX only** — Linux is the productio
 environment, darwin is development (F_FULLFSYNC with fsync fallback), and there is
 no Windows `File_Ops`; sync-primitive CI tests may be gated to Linux.
 
+*(Amended 2026-09-01, `RECORD-A-0011`: **the second departure is now the family's
+position, not this repository's alone. Windows is not supported from
+odin-rdf-record upward.** odin-rdf-shacl and odin-rdf-sparql have dropped their
+`windows-latest` legs; both run ubuntu and macos. The legs had been green, because
+their suites open every store over the platform-free memory seam and never touch a
+real directory — so the family was claiming that a Windows build compiles and
+passes while the store beneath it cannot keep a byte there. `v0.7.0` made that
+concrete: `RECORD-T-0034` moved three POSIX-using suites into package `record`, and
+**Odin's `_test.odin` is a naming convention rather than a build tag**, so those
+files are part of the package every consumer compiles and both engines went red.
+The files stay untagged deliberately — the package genuinely does not compile on
+Windows now, an honest failure rather than a half-built one. **odin-rdf-parser
+keeps Windows**: platform support belongs to the layer that touches the platform,
+and the parser touches none. A consumer wanting durable storage on Windows is the
+review trigger; `File_Ops` is already the seam.)*
+
 ### odin-rdf-sparql — `SPARQL-*` — complete, on odin-rdf-record (v0.6.0)
 
 **Amended 2026-08-25 (`SPARQL-I-0003`): this engine was ported off odin-rdf-store onto
