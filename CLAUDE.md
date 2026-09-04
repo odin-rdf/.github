@@ -557,6 +557,30 @@ there:
   odin-rdf-parser: on an unterminated long string the scanner error's `column`
   comes out negative while `offset` and `line` are right (RECORD-T-0017).
 
+**Amended 2026-09-04 — `v0.8.0`, `RECORD-I-0009` and `RECORD-A-0012`: the
+permutations are copy-on-write B+trees of fact ids, and a commit costs 0.24 ms
+where it cost 37.** Every `apply` had been running the boot path's seven-order
+radix re-sort — 37.1 ms of a 37.5 ms commit at 4×10⁵ facts, 20 MB transient —
+which `RECORD-A-0005` part 3 had priced as "allocator traffic" and the
+application's interactive commit rate made visible. The investigation
+(`record/btree_bench_test.odin`, behind `RECORD_XBENCH`) measured three shapes
+over one fact table: the re-sort, a flat array merged in place (440 µs, the
+recorded fallback), and the tree (9–11 µs for one assert across all seven
+orders). Leaves hold fact ids only, so resident bytes are 11.1 MB packed
+against 10.7 flat, drifting toward ~15.5 MB at steady-state fill between wakes;
+inner nodes hold each child's minimum key and count, so `range_len` is still
+exact and matches are 10–30% *faster*. Scans are 2.5 ns per candidate on both.
+**Boot is unchanged in shape**: `log.md` §8's sort-once argument was re-asked
+for the tree and holds by 13× (streaming inserts 568 ms against sort-and-pack
+44 ms), so every wake sorts and packs full — the pack is 1.1 ms. A set that
+dies on a reader's thread retires its roots for the writer to drain, so the
+node arena is mutated on one thread only; `apply` inserts below 8,192 asserts
+and sort-and-packs above. **Not a format change.** Both engines compile and
+pass with no source change and every read pin holds — shacl's 7503, sparql's
+sixteen. For a session landing here: `Range` is two ranks and `Scan` a cursor
+now, `prefix_bound` is gone, and the six suites that once read `s.ord[o]` as a
+slice go through `perm_collect`.
+
 **Where a test goes (2026-09-01, `RECORD-T-0034`).** Most of this repository's
 tests are **in-package**, `record/*_test.odin`, and that is the default for
 anything new. The reason is not taste: `@(private)` in Odin is *package*-scoped,
