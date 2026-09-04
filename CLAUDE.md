@@ -599,8 +599,10 @@ change, 7503 as pinned and every sparql bench count unmoved. odin-rdf-app pins
 `v0.9.0` for `snapshot_history`; the consumer handoff is at the end of
 `RECORD-T-0044`. One finding, about CI rather than code: the record's optimized
 scale pass measures a one-second boot budget with two test threads on a shared
-runner and came in at 1007 ms against 941 the run before — a rerun passed;
-`RECORD-T-0045`.
+runner and came in at 1007 ms against 941 the run before — a rerun passed.
+`RECORD-T-0045` made every clock in that pass a warning rather than a gate the
+same evening: the sub-second criterion is about production hardware, a release
+is measured there, and CI logs the figure without failing on it.
 
 **Where a test goes (2026-09-01, `RECORD-T-0034`).** Most of this repository's
 tests are **in-package**, `record/*_test.odin`, and that is the default for
