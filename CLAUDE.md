@@ -581,6 +581,19 @@ sixteen. For a session landing here: `Range` is two ranks and `Scan` a cursor
 now, `prefix_bound` is gone, and the six suites that once read `s.ord[o]` as a
 slice go through `perm_collect`.
 
+**Amended 2026-09-04, later — `RECORD-T-0044`, unreleased on `main`:
+`snapshot_history(snap, p) -> Range`.** The first capability gap filed against
+this store by odin-rdf-app, on adopting `v0.8.0`: one call site on a miss path
+had been reading `Range.main` to tell "never asserted" from "asserted and
+since retracted", and `v0.8.0` made `Range` opaque in fact. `api.md` §12.6 had
+already decided the shape — history is its own entry point, not a flag on
+`Filter`, so that no filter combination makes `snapshot_match` return a
+retracted generation — and it is built as written: the same window, the same
+`range_iter`/`scan_next`, the interval test omitted and nothing else; each id
+carries its interval through `snapshot_fact` and its origin through
+`snapshot_derived`. Neither engine needs it. **The consumer needs a tag to pin
+it** — nothing on `main` is pinnable — and cutting `v0.9.0` is the owner's call.
+
 **Where a test goes (2026-09-01, `RECORD-T-0034`).** Most of this repository's
 tests are **in-package**, `record/*_test.odin`, and that is the default for
 anything new. The reason is not taste: `@(private)` in Odin is *package*-scoped,
