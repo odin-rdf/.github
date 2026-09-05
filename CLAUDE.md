@@ -686,7 +686,7 @@ keeps Windows**: platform support belongs to the layer that touches the platform
 and the parser touches none. A consumer wanting durable storage on Windows is the
 review trigger; `File_Ops` is already the seam.)*
 
-### odin-rdf-sparql — `SPARQL-*` — complete, on odin-rdf-record (v0.6.0)
+### odin-rdf-sparql — `SPARQL-*` — complete, on odin-rdf-record (v0.9.1)
 
 **Amended 2026-08-25 (`SPARQL-I-0003`): this engine was ported off odin-rdf-store onto
 odin-rdf-record, the second and last of the family's two ports.** The old section stands
@@ -699,9 +699,13 @@ backend-spanning procedure types, the harness `Backend` enum, the `store:` colle
 nine test files that existed only because there was an instantiation to test. **No
 `Term_ID` width matrix**: record's widths are fixed by design, so `make test` runs once,
 and all three CI runners run it, the suites opening every store over record's
-platform-free memory seam (`Mem_FS` + `mem_file_ops`). Pins: odin-rdf-parser `v0.1.2`
+platform-free memory seam (`Mem_FS` + `mem_file_ops`) *(amended 2026-09-01,
+`RECORD-A-0011`: **two runners**, ubuntu and macos — the `windows-latest` leg
+was dropped when the record became POSIX-only in fact as well as in policy;
+the memory seam is why the leg had been green over a store that cannot keep a
+byte there)*. Pins: odin-rdf-parser `v0.1.2`
 *(`v0.1.0` until later the same day, when `RDF-T-0026` landed — the first parser bump this
-engine has ever needed, and it filed the bug)*, odin-rdf-record `v0.4.0` *(→ `v0.5.0` on 2026-08-27, `SPARQL-T-0045`; → `v0.6.0` the same day, `SPARQL-T-0046`)* — `v0.4.0` was cut *for this port*, `RECORD-I-0004` building
+engine has ever needed, and it filed the bug)*, odin-rdf-record `v0.4.0` *(→ `v0.5.0` on 2026-08-27, `SPARQL-T-0045`; → `v0.6.0` the same day, `SPARQL-T-0046`; → `v0.7.0` on 2026-09-01, `SPARQL-T-0047`, the exported-surface release — 122 names stopped being exported and this engine named none of them; → `v0.8.0` on 2026-09-04, `SPARQL-T-0048`, the B+tree permutations, a read change with no source change; → `v0.9.0` the same day, `SPARQL-T-0049`, `snapshot_history`, which SPARQL has no syntax to ask for; → **`v0.9.1`** on 2026-09-05, `SPARQL-T-0051`, a test-only release of the record. **Every one of those walks was a pin bump and nothing else** — no source change here, the W3C survey byte-identical and every `bench/` read and solution count unmoved, each time)* — `v0.4.0` was cut *for this port*, `RECORD-I-0004` building
 triple terms because the owner declined to let the port narrow a headline capability.
 
 **537 of 537 evaluated W3C entries across 38 enabled directories**, up from 512/37; 286
@@ -834,7 +838,7 @@ Out of scope: SPARQL Update, the HTTP and Graph Store protocols, federation (SER
 full-text search. (Result serialization *was* out of scope and no longer is — `sparql/srj`
 and `sparql/srx` ship the JSON and XML results formats.)
 
-### odin-rdf-shacl — `SHACL-*` — SHACL Core complete, on odin-rdf-record (v0.2.0)
+### odin-rdf-shacl — `SHACL-*` — SHACL Core complete, on odin-rdf-record (v0.9.1)
 
 Shape-based validation, a peer of odin-rdf-sparql: shapes graphs are ordinary RDF loaded
 via the parser, and the data graph is an epoch-pinned **snapshot of odin-rdf-record**, read
@@ -844,7 +848,12 @@ paths, the constraint catalogue, `sh:ValidationReport` building, and the `Valida
 binding. Dependencies: odin-rdf-parser `v0.1.1`, odin-rdf-record `v0.3.0` as a floor. No
 LMDB, no native code, no width matrix; the suites open every store over the record's
 platform-free memory seam, so all three CI runners run the same `make test`.
-*(Amended 2026-08-27, `SHACL-T-0040`: **`v0.5.0`** — `Filter.scope`, seven sites state `.All`, nothing else moves.)* *(And **`v0.6.0`** the same day, `SHACL-T-0041`: record's `GPOS` order — every graph-bound session read is a prefix, no source change.)* *(Amended 2026-08-25, `SHACL-T-0038`: the record floor is **`v0.4.0`**. This
+*(Amended 2026-09-01, `RECORD-A-0011`: **two runners**, ubuntu and macos. The
+`windows-latest` leg was green precisely because the memory seam never touches a
+directory, so the family had been claiming a Windows build passes over a store
+that cannot keep a byte there; the record is POSIX-only in fact since `v0.7.0`
+put three POSIX-using suites inside the package.)*
+*(Amended 2026-08-27, `SHACL-T-0040`: **`v0.5.0`** — `Filter.scope`, seven sites state `.All`, nothing else moves.)* *(And **`v0.6.0`** the same day, `SHACL-T-0041`: record's `GPOS` order — every graph-bound session read is a prefix, no source change.)* *(Then **`v0.7.0`** on 2026-09-01, `SHACL-T-0042` — the record's exported surface fell from 195 names to 73 and this engine named none of the 122 that went private, which is the strongest test the "consume the interface" convention has had; **`v0.8.0`** on 2026-09-04, `SHACL-T-0043` — B+tree permutations, so a validated edit through the `Validator` hook costs the application 0.24 ms of commit where it cost 37; **`v0.9.0`** the same day, `SHACL-T-0044` — `snapshot_history`, a temporal question a validator does not ask; and **`v0.9.1`** on 2026-09-05, `SHACL-T-0045` — a test-only release. **The pin is `v0.9.1` and every one of those was a bump and nothing else**: no source change, `make test` green and 7503 on the reference configuration as pinned, each time.)* *(Amended 2026-08-25, `SHACL-T-0038`: the record floor is **`v0.4.0`**. This
 engine needs neither of RDF 1.2's term kinds and adopted the release for the two
 things their arrival changed — `record.Term_Kind` gained `.Triple`, which
 `node_kind_of` switches on exhaustively (the port's one compile error, and the
