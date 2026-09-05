@@ -604,6 +604,32 @@ runner and came in at 1007 ms against 941 the run before — a rerun passed.
 same evening: the sub-second criterion is about production hardware, a release
 is measured there, and CI logs the figure without failing on it.
 
+**Amended 2026-09-05 — `v0.9.1`, `RECORD-T-0047`: a test-only release, and
+the first defect this repository's *tests* have shipped to a consumer.**
+Three of them located what they needed relative to the process's working
+directory rather than to their own source file: the two proof tests ran
+`tests/verify/rdflog_verify.py` through `python3`, and `test_tool` ran
+`build/record`. That is invisible here, where `make test` runs from the
+repository root — and fatal for **odin-rdf-app**, whose suite is one binary
+(`odin test <main> -all-packages`, which compiles this package's tests into
+it and runs them from the application's directory): python found no script,
+its stdout was empty, and every corpus case failed as "implementations
+disagree" against an empty verdict, while the CLI test asserted exit codes
+against a binary that was never there. `PY` and `BIN` are
+`#directory + "..."` now — the form the three sibling repositories' W3C
+harnesses have used all along, and the record's task cites all three as
+precedent — and `test_tool` returns early with a `log.warn` when the CLI is
+simply not built, a missing build reading as a missing build. The scratch
+directories stay relative deliberately: they are the runner's litter, and
+anchoring them would have the package write into its own checkout from a
+consumer's build. **No source, format or API change**; a `v0.9.0` store
+reads and writes identically. Both engines walked the same day
+(`SHACL-T-0045`, `SPARQL-T-0051`): pins bumped, no source change, 7503 as
+pinned and every sparql bench count unmoved — and neither ever had the
+defect, their harnesses being the precedent. The rule worth carrying:
+**a test locates its fixtures by `#directory`, not by the cwd**, because a
+library's tests are compiled and run by its consumers.
+
 **Where a test goes (2026-09-01, `RECORD-T-0034`).** Most of this repository's
 tests are **in-package**, `record/*_test.odin`, and that is the default for
 anything new. The reason is not taste: `@(private)` in Odin is *package*-scoped,
