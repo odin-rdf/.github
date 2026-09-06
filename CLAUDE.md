@@ -630,6 +630,73 @@ defect, their harnesses being the precedent. The rule worth carrying:
 **a test locates its fixtures by `#directory`, not by the cwd**, because a
 library's tests are compiled and run by its consumers.
 
+**Amended 2026-09-06 — `RECORD-I-0008`, attestation: what the chain proves,
+and what it does not. In discovery; nothing implemented, no code touched.**
+An adversarial review on 2026-09-02 asked whether "tamper-evident, and
+provably so by a third party" holds. **The chain itself holds and is
+stronger than most claims of the kind** — term definitions live *inside* it
+(§5.2), the header's redundant fields are checked against the walk's own
+counters, the position rule refuses to launder mid-file damage as a torn
+tail, and a second implementation agrees verdict for verdict over a 29-case
+corpus. **What does not hold is anything the chain is not keyed to**, and
+three findings were reproduced against running code: a sealed segment's
+seal record is entirely unvouched (rewrite `finalHash`, repair the frame
+CRC, both verifiers say clean — and §5.4 designates that same field as the
+signature anchor); tail rollback is undetectable *and* the open path
+destroys the only local witness, since `writer_open` stamps `HEAD`
+unconditionally and never reads it, so the CLI's stale-HEAD warning can
+never fire after a restart; and `forge.py` (~120 lines of Python written
+from `log.md`, kept beside the initiative as standing evidence) rewrites a
+three-segment store so an asserted fact reads as retracted, with both
+verifiers reporting it clean. So what the chain provides today is
+**integrity, not authenticity**: it catches anything that cannot also
+recompute — bad sectors, torn writes, a careless edit, a buggy writer — and
+nothing at all against write access to the directory.
+
+Four tasks, ordered, and the ordering is the point: `RECORD-T-0036` cross-
+checks the seal against the walk **first**, because §5.4 offers `sig` as a
+signature "over finalHash" and signing a value nothing binds to the
+segment's contents is not merely incomplete but *convincing theater*;
+`RECORD-T-0037` makes the open path compare against an anchor before
+anything rewrites `HEAD`; `RECORD-T-0038` adds `Attestor` and
+`Attest_Check` in the `Validator` idiom — **this package will not hold a
+key, choose an algorithm, or talk to a network**, `RECORD-A-0006`'s stance
+applied to attestation; `RECORD-T-0039` scopes the claim in `README.md`,
+`vision.md` and `log.md` §1. **No format version bump** — §5.4's
+`sigLen`/`sig` was reserved and is already decoded and written as given —
+and both engines are expected to compile with no source change. `core:crypto`
+has `ed25519`, so signing costs no external dependency. The reason it is
+being done now rather than later is `architecture.md:1104`, which called
+external head publication "a genuinely cheap thing to get right at the start
+and a genuinely expensive thing to retrofit": the anchor comparison **can
+fail an open**, which is a breaking operational change once stores exist in
+the field.
+
+Two things decided on 2026-09-06 that a session landing here should not
+re-derive. **The local `HEAD` anchor is read-and-compared by default**
+(`RECORD-T-0037`), and signing `HEAD` — which the `Attestor` seam makes
+nearly free — **bounds** rollback to epochs an attacker observed a HEAD for
+rather than preventing tail removal: HEAD is an `O_TRUNC` rewrite every
+commit, so an attacker arriving later has no signed earlier head to replay,
+but a persistent one reads it while it is current, or recovers it from a
+backup or snapshot. Freshness cannot come from inside the write domain; it
+needs a witness outside it, a hardware monotonic counter, or WORM. Two costs
+came with that: `HEAD` stops being advisory (temp + rename + directory
+fsync, failure no longer swallowed), and the HEAD signature must be a
+switch separate from the seal's, or a network HSM lands on the commit path
+that signing-at-rotation was protecting. **And encryption at rest stays out
+of the format** (`RECORD-T-0049`, a note): `log.md` §10 decided it at design
+time and the reason survives re-derivation — the independent verifier is
+~270 lines of *stdlib* Python and Python has no stdlib AEAD, so in-format
+encryption ends third-party verifiability, on top of costing a format v3
+with no migration and a store that no longer migrates by byte copy. The
+route for a consumer who needs it anyway is **`File_Ops`**, which both the
+write path and `verify`'s whole-segment reads already go through: a
+length-preserving stream cipher keeps offsets, the torn-tail rule and the
+CRCs intact, `HEAD` is the nonce hazard, and a documented decrypt step is
+what keeps the proof layer honest. Same idiom as the signing seam, separate
+struct — one key for two purposes is the mistake hygiene exists to prevent.
+
 **Where a test goes (2026-09-01, `RECORD-T-0034`).** Most of this repository's
 tests are **in-package**, `record/*_test.odin`, and that is the default for
 anything new. The reason is not taste: `@(private)` in Odin is *package*-scoped,
