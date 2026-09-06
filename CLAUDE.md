@@ -1034,9 +1034,18 @@ odin-rdf-record (Makefile-driven; no width matrix — its widths are fixed by de
 make test    # the suite, the fault corpus, then the scale measurement optimized
 make check   # vet every package with -vet -strict-style, then `make api`
 make api     # diff the exported surface against doc/api-surface.txt
-make tool    # build the record CLI (verify, dump, head) into build/record
+make tool    # build the rdfrecord CLI (verify, dump, head) into build/rdfrecord
+make install # build it -o:speed and install it as ~/.local/bin/rdfrecord
 make clean   # remove build/
 ```
+
+*(Amended 2026-09-06, `RECORD-T-0048`: **the CLI is `rdfrecord`, not `record`** —
+`build/rdfrecord`, the usage banner and the installed name are one word now, so the
+tool sits on PATH beside vsuite-be's `rdfgen`, `rdfcheck`, `rdffmt` and `rdfseed`
+instead of claiming a word that common. `make install` builds `tool/` at `-o:speed`
+into `build/rdfrecord-release` — never over the debug binary the suite asserts exit
+codes against — and installs it with `install -m 0755` into `INSTALL_DIR`, default
+`$HOME/.local/bin`. No format, API or source change to the library.)*
 
 *(Amended 2026-09-01, `RECORD-I-0005`/`-I-0007`, tag `v0.7.0`: `make check` ends in
 `make api`, and `make test` is two passes — the ordinary one, then the scale
