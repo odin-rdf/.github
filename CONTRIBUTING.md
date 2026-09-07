@@ -2,29 +2,34 @@
 
 This file applies to every repository in the [odin-rdf](https://github.com/odin-rdf)
 organization: [odin-rdf-parser](https://github.com/odin-rdf/odin-rdf-parser),
-[odin-rdf-store](https://github.com/odin-rdf/odin-rdf-store),
+[odin-rdf-record](https://github.com/odin-rdf/odin-rdf-record),
 [odin-rdf-sparql](https://github.com/odin-rdf/odin-rdf-sparql), and
 [odin-rdf-shacl](https://github.com/odin-rdf/odin-rdf-shacl).
+
+[odin-rdf-store](https://github.com/odin-rdf/odin-rdf-store) is **retired**
+(final tag `v0.7.0`, no consumers since 2026-08-25) and read-only. It is kept
+for its ADRs, which the other repositories cite throughout; nothing here
+applies to it.
 
 ## Getting set up
 
 The projects reach each other through **relative Odin collections**, not
 vendored copies or submodules — `-collection:rdf=../odin-rdf-parser`,
-`-collection:store=../odin-rdf-store`. They must therefore sit side by side
+`-collection:record=../odin-rdf-record`. They must therefore sit side by side
 in one directory:
 
 ```
 odin-rdf/
 ├── odin-rdf-parser/
-├── odin-rdf-store/
+├── odin-rdf-record/
 ├── odin-rdf-sparql/
 └── odin-rdf-shacl/
 ```
 
-Clone the ones you need into that layout. A collection resolves in the
-*importing* compilation, not the imported checkout, so a project that uses
-the store also needs the parser present — the store's own sources import
-`rdf:`.
+Clone the ones you need into that layout — `init.sh` at the checkout root
+does it for all four. A collection resolves in the *importing* compilation,
+not the imported checkout, so a project that uses the record also needs the
+parser present — the record's own sources import `rdf:`.
 
 The same mechanism carries projects *outside* the family, with one extra hop:
 a consumer keeps its own checkout beside `odin-rdf/` rather than inside it,
@@ -80,7 +85,7 @@ CI runs exactly these, so there are no surprises waiting in the pull request.
   leaves policy to its consumers. Servers, protocol layers, and pipelines
   are out of scope everywhere in the family.
 - **Consume the interface, don't bypass it.** Downstream projects reach
-  storage only through odin-rdf-store's published match contract. If
+  storage only through odin-rdf-record's published read API. If
   something is missing, propose it upstream with the evidence that
   motivated it rather than working around it locally.
 - **Idiomatic Odin.** Explicit memory management, allocator awareness,

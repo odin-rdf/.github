@@ -1,6 +1,11 @@
 # odin-rdf — an RDF stack for the Odin programming language
 
-This directory is not itself a repository. It is the shared checkout root for five
+This directory is not itself a repository. It is the shared checkout root for the
+family's repositories. **As of 2026-09-07 there are four of them here and
+odin-rdf-store is not one — it is retired, and it is expected to be absent from
+disk.** If you find it checked out, it is a leftover: do not build it, do not run
+its suite, and do not open its Metis as if it were work. See its section below.
+Historically it was the shared checkout root for five
 independent repositories that together form a layered RDF toolchain for Odin —
 four on GitHub, plus odin-rdf-record (founded 2026-08-19; published and tagged `v0.1.0` on 2026-08-20) —
 written from scratch in Odin with no external dependencies (LMDB being the single
@@ -51,11 +56,11 @@ odin-rdf-record   system of record — hash-chained log + memory-resident
 odin-rdf-sparql   query engine              odin-rdf-shacl   validation engine
                                             (peer of sparql; optionally consumes it)
 
-odin-rdf-store    RETIRABLE. No consumers since 2026-08-25. The last thing
-                  holding it was odin-rdf-sparql's port; that is done. It is
-                  still a working, tagged, tested LMDB store — retiring it is a
-                  decision about maintenance, not a repair. See the retirement
-                  handoff in odin-rdf-sparql's SPARQL-T-0039.
+odin-rdf-store    RETIRED 2026-09-07, final tag v0.7.0. No consumers since
+                  2026-08-25. NOT PART OF THIS CHECKOUT — init.sh and pull.sh
+                  do not name it, and it is expected to be absent from disk.
+                  Read-only on GitHub for its ADRs, which the other repos
+                  cite 65 times. See the handoff in SPARQL-T-0039.
 ```
 
 Each repo is developed with the **Metis** tools and Metis MCP: `.metis/vision.md` is
@@ -129,7 +134,31 @@ is POSIX only by design. Every repository here now states a parser pin.)*
 odin-rdf-shacl loads shapes through the parser too and pins `v0.1.1`; odin-rdf-store is
 not touched.
 
-### odin-rdf-store — `STORE-*` — RETIRABLE as of 2026-08-25, no consumers
+### odin-rdf-store — `STORE-*` — RETIRED, final tag `v0.7.0`, not on disk
+
+**Amended 2026-09-07 — this repository is retired and is expected to be absent
+from this checkout root.** A session landing here has already mistaken it for
+active work once, which is what prompted this note. Three things to take from
+it and nothing else:
+
+- **It has no consumers and never will again.** Do not build it, do not run its
+  suite, do not open its `.metis` as if it held work. It has no open Metis
+  items: `STORE-T-0054`, the last one, was closed unfixed on 2026-09-07.
+- **`v0.7.0` is the final tag and `main` will not move again.** The six commits
+  that had sat unreleased since 2026-08-12 — the `NAMED_GRAPHS` wildcard,
+  `graphs`, `nodes`, `distinct_values`/`match_set`, `lookup_term_borrow_txn`,
+  `match_feed` — were released by that tag purely so `main` and the last tag
+  agree. Nothing consumes any of them.
+- **It is kept read-only on GitHub for its history, not its code.** Its ADRs
+  are cited **65 times** across the other repositories' Metis documents, and
+  several of those citations are load-bearing explanations of why
+  odin-rdf-record is shaped as it is. Do not delete them, and do not rewrite
+  the family's history so that odin-rdf-record looks like it was always the
+  plan — it was not. The store came first, and both engines were written
+  backend-independent against it, which is exactly why two ports were possible
+  in a day each.
+
+The two paragraphs below stand as the record of what was true before this.
 
 **Amended 2026-08-25.** Both engines have been ported off this store —
 odin-rdf-shacl on 2026-08-20 (`SHACL-I-0004`), odin-rdf-sparql on

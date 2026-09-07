@@ -1,32 +1,30 @@
 # odin-rdf
 
 An RDF toolchain for the [Odin](https://odin-lang.org) programming language,
-written from scratch in Odin. LMDB — the storage engine under the store — is
-the single external dependency, and odin-rdf-record carries none at all.
+written from scratch in Odin, **with no external dependencies at all**.
 
-Five independent libraries — a strict stack from the parser up to the query
-and validation engines, plus a second store beside it. Each depends only
-downward, and each is usable on its own.
+Four independent libraries — a strict stack from the parser up to the query
+and validation engines. Each depends only downward, and each is usable on its
+own.
 
 ```
 odin-rdf-parser   formats, data model, and parser
       |
-      +-- odin-rdf-store    storage and the match interface
-      |         |
-      |         +-- odin-rdf-sparql   query engine
-      |         |
-      |         +-- odin-rdf-shacl    shape validation
-      |
-      +-- odin-rdf-record   tamper-evident system of record
+      +-- odin-rdf-record   tamper-evident system of record: the log,
+                |           the resident projection, epoch-pinned snapshots
+                |
+                +-- odin-rdf-sparql   query engine
+                |
+                +-- odin-rdf-shacl    shape validation
 ```
 
 | Project | What it does | Status |
 | --- | --- | --- |
 | **[odin-rdf-parser](https://github.com/odin-rdf/odin-rdf-parser)** | Streaming parsers and emitters for N-Triples, N-Quads, Turtle, and TriG, plus the shared term/triple/quad model | All 1045 W3C conformance tests pass, RDF 1.2 / RDF-star included |
-| **[odin-rdf-store](https://github.com/odin-rdf/odin-rdf-store)** | LMDB-backed quad store and the `match()` interface engines query through — transactional, with transaction time: every commit is dated and attributed, and the past is readable as-of | One shared conformance suite, run at both `Term_ID` widths |
-| **[odin-rdf-sparql](https://github.com/odin-rdf/odin-rdf-sparql)** | SPARQL 1.1 Query with the 1.2 surface: text → algebra → solutions over the store's match interface, plus SPARQL results JSON and XML writers | 352 syntax and 483 evaluation tests, run at both `Term_ID` widths |
-| **[odin-rdf-shacl](https://github.com/odin-rdf/odin-rdf-shacl)** | SHACL Core validation of data graphs against shapes graphs | All 98 entries of the W3C `core/` suite pass, run at both `Term_ID` widths — SHACL-SPARQL is a later phase |
-| **[odin-rdf-record](https://github.com/odin-rdf/odin-rdf-record)** | Tamper-evident system of record: an append-only, hash-chained log is the only durable form, replayed into a memory-resident projection — a second store beside odin-rdf-store, third-party verifiable from the format spec alone | The log of record is complete (format v1), cross-checked verdict for verdict against an independent Python verifier on every test run — the resident projection is next |
+| **[odin-rdf-record](https://github.com/odin-rdf/odin-rdf-record)** | The family's store. An append-only, hash-chained, segmented log is the only durable form, replayed on every start into a memory-resident projection serving epoch-pinned snapshots — third-party verifiable from the format specification alone | `v0.10.0`. Log, resident store and write path complete (format v2); cross-checked verdict for verdict against an independent Python verifier on every test run |
+| **[odin-rdf-sparql](https://github.com/odin-rdf/odin-rdf-sparql)** | SPARQL 1.1 Query with the 1.2 surface: text → algebra → solutions over the record's read API, plus SPARQL results JSON and XML writers | `v0.3.0`. 352 syntax tests and 546 of the corpus's 556 evaluable entries across 39 directories |
+| **[odin-rdf-shacl](https://github.com/odin-rdf/odin-rdf-shacl)** | SHACL Core validation of data graphs against shapes graphs | `v0.3.0`. All 98 entries of the W3C `core/` suite pass, with no skip list — SHACL-SPARQL is a later phase |
+| **[odin-rdf-store](https://github.com/odin-rdf/odin-rdf-store)** | *Retired.* The LMDB-backed quad store both engines were originally written against, and the `match()` interface they queried through | **Retired 2026-09-07**, final tag `v0.7.0`, no consumers since both engines moved to odin-rdf-record. Read-only, kept for its ADRs |
 
 ## What these are
 
