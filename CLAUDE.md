@@ -630,6 +630,33 @@ defect, their harnesses being the precedent. The rule worth carrying:
 **a test locates its fixtures by `#directory`, not by the cwd**, because a
 library's tests are compiled and run by its consumers.
 
+**Amended 2026-09-07 — `v0.10.0`: the CLI is `rdfrecord`, and it has a
+fourth command. The library is byte-identical to `v0.9.1`** —
+`doc/api-surface.txt` unmoved at 74 exported names, no format change, a
+`v0.9.1` store read and written identically, both engines compiling with no
+source change. `RECORD-T-0048` renamed the tool and gave it `make install`
+(`-o:speed` into `build/rdfrecord-release`, never over the debug binary the
+suite asserts exit codes against). `RECORD-T-0050`/`-T-0052` added **`stats`**
+— live facts, graph count, an `rdf:type` class census, `--prefix` and
+`--format=plain|json` — folded from the log rather than answered from a
+booted store, and that is a constraint rather than an oversight: `store_open`
+recovers, resumes the writer, rewrites `HEAD` and can append an environment
+note, so **all four commands are read-only and none of them opens the
+store**. It costs ~0.6 s and ~82 MB over a 4×10⁵-op store against a 0.37 s /
+35 MB walk beneath it, the gap being a term dictionary rebuilt in the tool
+because `log_read` decodes ids into terms and drops the ids (`RECORD-T-0051`,
+filed). `RECORD-T-0053` made the §5.5 environment note state the real format
+version: it had `"format":1` as a literal in both `log.md` and the writer and
+the format became 2 at `RECORD-I-0004` without either moving, so **every
+store written between `v0.4.0` and this fix carries a note claiming format 1
+above a header saying 2**. Nothing reads the note — the open path compares it
+byte-for-byte and never parses it — so no behaviour depended on it, and
+existing stores correct themselves at their next boot; the writer selects its
+payload by `FORMAT_VERSION` in a `when` now, so the next bump fails the build
+instead of shipping. Both engines walked the same day (`SHACL-T-0047`,
+`SPARQL-T-0052`). **Breaking for a caller of the tool only**: `record verify
+<dir>` is `rdfrecord verify <dir>`.
+
 **Amended 2026-09-06 — `RECORD-I-0008`, attestation: what the chain proves,
 and what it does not. In discovery; nothing implemented, no code touched.**
 An adversarial review on 2026-09-02 asked whether "tamper-evident, and
@@ -753,7 +780,7 @@ keeps Windows**: platform support belongs to the layer that touches the platform
 and the parser touches none. A consumer wanting durable storage on Windows is the
 review trigger; `File_Ops` is already the seam.)*
 
-### odin-rdf-sparql — `SPARQL-*` — complete, on odin-rdf-record (v0.9.1)
+### odin-rdf-sparql — `SPARQL-*` — complete, on odin-rdf-record (v0.10.0), released v0.3.0
 
 **Amended 2026-08-25 (`SPARQL-I-0003`): this engine was ported off odin-rdf-store onto
 odin-rdf-record, the second and last of the family's two ports.** The old section stands
@@ -772,7 +799,7 @@ was dropped when the record became POSIX-only in fact as well as in policy;
 the memory seam is why the leg had been green over a store that cannot keep a
 byte there)*. Pins: odin-rdf-parser `v0.1.2`
 *(`v0.1.0` until later the same day, when `RDF-T-0026` landed — the first parser bump this
-engine has ever needed, and it filed the bug)*, odin-rdf-record `v0.4.0` *(→ `v0.5.0` on 2026-08-27, `SPARQL-T-0045`; → `v0.6.0` the same day, `SPARQL-T-0046`; → `v0.7.0` on 2026-09-01, `SPARQL-T-0047`, the exported-surface release — 122 names stopped being exported and this engine named none of them; → `v0.8.0` on 2026-09-04, `SPARQL-T-0048`, the B+tree permutations, a read change with no source change; → `v0.9.0` the same day, `SPARQL-T-0049`, `snapshot_history`, which SPARQL has no syntax to ask for; → **`v0.9.1`** on 2026-09-05, `SPARQL-T-0051`, a test-only release of the record. **Every one of those walks was a pin bump and nothing else** — no source change here, the W3C survey byte-identical and every `bench/` read and solution count unmoved, each time)* — `v0.4.0` was cut *for this port*, `RECORD-I-0004` building
+engine has ever needed, and it filed the bug)*, odin-rdf-record `v0.4.0` *(→ `v0.5.0` on 2026-08-27, `SPARQL-T-0045`; → `v0.6.0` the same day, `SPARQL-T-0046`; → `v0.7.0` on 2026-09-01, `SPARQL-T-0047`, the exported-surface release — 122 names stopped being exported and this engine named none of them; → `v0.8.0` on 2026-09-04, `SPARQL-T-0048`, the B+tree permutations, a read change with no source change; → `v0.9.0` the same day, `SPARQL-T-0049`, `snapshot_history`, which SPARQL has no syntax to ask for; → **`v0.9.1`** on 2026-09-05, `SPARQL-T-0051`, a test-only release of the record; → **`v0.10.0`** on 2026-09-07, `SPARQL-T-0052`, the record's CLI release — `rdfrecord`, a `stats` subcommand, the environment note stating the real format version, and a library byte-identical to `v0.9.1`. **Every one of those walks was a pin bump and nothing else** — no source change here, the W3C survey byte-identical and every `bench/` read and solution count unmoved, each time)* — `v0.4.0` was cut *for this port*, `RECORD-I-0004` building
 triple terms because the owner declined to let the port narrow a headline capability.
 
 **537 of 537 evaluated W3C entries across 38 enabled directories**, up from 512/37; 286
@@ -858,7 +885,7 @@ era got (`SPARQL-T-0034`, `-T-0025`). **Triple terms are *cheaper* than they wer
 allocation, no decode and no recursion, against odin-rdf-store's two round trips.
 
 ~~**Unreleased.** `v0.1.0` is the store-era engine and is still the only tag; whether the
-port warrants one is the owner's call.~~ **Released as `v0.2.0` on 2026-08-25** (annotated
+port warrants one is the owner's call.~~ **Released as `v0.2.0` on 2026-08-25** *(and **`v0.3.0` on 2026-09-07** — see the note at the end of this section)* (annotated
 tag at `b1f1667`, GitHub release with notes) — the record-era engine's first tag, cut the
 same evening the merge join landed and on a commit CI had just proved green on all three
 runners. `v0.1.0` remains the store-era engine, the same split odin-rdf-shacl's two tags
@@ -877,6 +904,16 @@ is a demonstration in the checkout root, not one of the five repositories and no
 by any of them, its `rdf/` tree and Makefile are a copy of `odin-vsuite`'s, and since the
 port it seeds its own record store with its own `src/rdfseed` — `make seed && make run` —
 where before it read an LMDB database no checkout could reproduce.)*
+
+*(Amended 2026-09-07: **`v0.3.0` is the release**, annotated tag on a commit CI had
+just proved green on both runners, with a GitHub release. `v0.2.0` predates
+`SPARQL-T-0044` — `query_init` taking the application's graph set as an
+authorization ceiling — and five record adoptions, `v0.5.0` through `v0.10.0`, so a
+consumer pinning it gets an engine that cannot be given a graph set. **`v0.3.0` still
+has no pinning consumer**: odin-rdf-app reaches this repository by path. The W3C
+survey is byte-identical to `v0.2.0`'s — 546 of 556 evaluable entries across 39
+directories, `sparql11-subquery`'s ten RDF/XML data documents the permanent ceiling —
+and every `bench/` read and solution count is unmoved.)*
 
 ---
 
@@ -905,14 +942,14 @@ Out of scope: SPARQL Update, the HTTP and Graph Store protocols, federation (SER
 full-text search. (Result serialization *was* out of scope and no longer is — `sparql/srj`
 and `sparql/srx` ship the JSON and XML results formats.)
 
-### odin-rdf-shacl — `SHACL-*` — SHACL Core complete, on odin-rdf-record (v0.9.1)
+### odin-rdf-shacl — `SHACL-*` — SHACL Core complete, on odin-rdf-record (v0.10.0), released v0.3.0
 
 Shape-based validation, a peer of odin-rdf-sparql: shapes graphs are ordinary RDF loaded
 via the parser, and the data graph is an epoch-pinned **snapshot of odin-rdf-record**, read
 through one file of session verbs (`shacl/session.odin`) and nothing else. **One package,
 `shacl`**, importing `rdf` and `record` only — compilation, target resolution, property
 paths, the constraint catalogue, `sh:ValidationReport` building, and the `Validator`
-binding. Dependencies: odin-rdf-parser `v0.1.1`, odin-rdf-record `v0.3.0` as a floor. No
+binding. Dependencies: odin-rdf-parser `v0.1.1` *(→ **`v0.1.2`** on 2026-09-07, `SHACL-T-0047` — the family's last stale parser pin; `RDF-T-0026` means a shapes graph naming an absolute IRI with dot segments is compiled against the term it states)*, odin-rdf-record `v0.3.0` as a floor. No
 LMDB, no native code, no width matrix; the suites open every store over the record's
 platform-free memory seam, so all three CI runners run the same `make test`.
 *(Amended 2026-09-01, `RECORD-A-0011`: **two runners**, ubuntu and macos. The
@@ -920,7 +957,7 @@ platform-free memory seam, so all three CI runners run the same `make test`.
 directory, so the family had been claiming a Windows build passes over a store
 that cannot keep a byte there; the record is POSIX-only in fact since `v0.7.0`
 put three POSIX-using suites inside the package.)*
-*(Amended 2026-08-27, `SHACL-T-0040`: **`v0.5.0`** — `Filter.scope`, seven sites state `.All`, nothing else moves.)* *(And **`v0.6.0`** the same day, `SHACL-T-0041`: record's `GPOS` order — every graph-bound session read is a prefix, no source change.)* *(Then **`v0.7.0`** on 2026-09-01, `SHACL-T-0042` — the record's exported surface fell from 195 names to 73 and this engine named none of the 122 that went private, which is the strongest test the "consume the interface" convention has had; **`v0.8.0`** on 2026-09-04, `SHACL-T-0043` — B+tree permutations, so a validated edit through the `Validator` hook costs the application 0.24 ms of commit where it cost 37; **`v0.9.0`** the same day, `SHACL-T-0044` — `snapshot_history`, a temporal question a validator does not ask; and **`v0.9.1`** on 2026-09-05, `SHACL-T-0045` — a test-only release. **The pin is `v0.9.1` and every one of those was a bump and nothing else**: no source change, `make test` green and 7503 on the reference configuration as pinned, each time.)* *(Amended 2026-08-25, `SHACL-T-0038`: the record floor is **`v0.4.0`**. This
+*(Amended 2026-08-27, `SHACL-T-0040`: **`v0.5.0`** — `Filter.scope`, seven sites state `.All`, nothing else moves.)* *(And **`v0.6.0`** the same day, `SHACL-T-0041`: record's `GPOS` order — every graph-bound session read is a prefix, no source change.)* *(Then **`v0.7.0`** on 2026-09-01, `SHACL-T-0042` — the record's exported surface fell from 195 names to 73 and this engine named none of the 122 that went private, which is the strongest test the "consume the interface" convention has had; **`v0.8.0`** on 2026-09-04, `SHACL-T-0043` — B+tree permutations, so a validated edit through the `Validator` hook costs the application 0.24 ms of commit where it cost 37; **`v0.9.0`** the same day, `SHACL-T-0044` — `snapshot_history`, a temporal question a validator does not ask; **`v0.9.1`** on 2026-09-05, `SHACL-T-0045` — a test-only release; and **`v0.10.0`** on 2026-09-07, `SHACL-T-0047` — the record's CLI release, its library byte-identical, walked together with the overdue parser bump. **The pin is `v0.10.0` and every one of those was a bump and nothing else**: no source change, `make test` green and 7503 on the reference configuration as pinned, each time.)* *(Amended 2026-08-25, `SHACL-T-0038`: the record floor is **`v0.4.0`**. This
 engine needs neither of RDF 1.2's term kinds and adopted the release for the two
 things their arrival changed — `record.Term_Kind` gained `.Triple`, which
 `node_kind_of` switches on exhaustively (the port's one compile error, and the
@@ -1006,6 +1043,12 @@ as `v0.2.0` on 2026-08-20** (tag at `b3ca168`, GitHub release with notes) — th
 engine's first tag; `v0.1.0` is the store-era engine. The owner's reading: complete, and
 the version to use for the foreseeable future unless a consumer or the record's API moving
 for the sparql port says otherwise. No shacl consumer pins a tag today.
+*(Amended 2026-09-07: **`v0.3.0` is the release**, and the "unless the record's API
+moves" clause is what happened — eight adoptions, `v0.4.0` through `v0.10.0`, and two
+verbs of this engine's own. A consumer pinning `v0.2.0` gets neither `session_init_union`
+nor a `.Triple` handled as an ordinary value node. `v0.2.0` stands as the port's tag; the
+three-tag chain is the same one odin-rdf-sparql carries. Still no shacl consumer pinning
+a tag.)*
 
 Out of scope: SHACL Advanced Features (rules, functions), inference/entailment, servers.
 
