@@ -5,6 +5,8 @@ family's repositories. **As of 2026-09-07 there are four of them here and
 odin-rdf-store is not one — it is retired, and it is expected to be absent from
 disk.** If you find it checked out, it is a leftover: do not build it, do not run
 its suite, and do not open its Metis as if it were work. See its section below.
+*(Amended 2026-09-30: **five** — `odin-rdf-kv`, the embedded key/value store, is
+cloned by `init.sh` beside the other four.)*
 Historically it was the shared checkout root for five
 independent repositories that together form a layered RDF toolchain for Odin —
 four on GitHub, plus odin-rdf-record (founded 2026-08-19; published and tagged `v0.1.0` on 2026-08-20) —
